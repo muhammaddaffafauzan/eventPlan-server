@@ -6,6 +6,13 @@ const { DataTypes } = Sequelize;
 const Event = db.define(
   "events",
   {
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
+    },
     uuid: {
       type: DataTypes.STRING,
       defaultValue: DataTypes.UUIDV4,
@@ -74,11 +81,7 @@ const Event = db.define(
     admin_validation: {
       type: DataTypes.ENUM('Menunggu Validasi', 'Disetujui', 'Ditolak'),
       allowNull: true,
-    },
-    userId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
+    }
   },
   {
     freezeTableName: true,

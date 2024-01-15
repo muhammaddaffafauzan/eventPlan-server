@@ -7,6 +7,13 @@ const { DataTypes } = Sequelize;
 const Profile = db.define(
   "Profile",
   {
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
+    },
     uuid: {
       type: DataTypes.STRING,
       defaultValue: DataTypes.UUIDV4,
@@ -47,13 +54,6 @@ const Profile = db.define(
         type: DataTypes.STRING,
         allowNull: false,
     },
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          notEmpty: true,
-        },
-      }
   },
   {
     freezeTableName: true,
