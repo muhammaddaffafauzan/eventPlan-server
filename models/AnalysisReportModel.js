@@ -1,27 +1,22 @@
+// EventReportModel.js
 import { Sequelize } from "sequelize";
 import db from "../config/Database.js";
-import Event from "./EventModel.js";
 import User from "./UsersModel.js";
+import Event from "./EventModel.js";
 
 const { DataTypes } = Sequelize;
 
-const AnalysisReport = db.define(
-  "analysis_reports",
+const EventReport = db.define(
+  "event_reports",
   {
-    reportId: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false,
-    },
-    eventId: {
+    userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
         notEmpty: true,
       },
     },
-    userId: {
+    eventId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
@@ -36,14 +31,14 @@ const AnalysisReport = db.define(
       },
     },
     comments: {
-      type: DataTypes.JSONB, 
+      type: DataTypes.JSONB,
       allowNull: true,
     },
     suggestions: {
       type: DataTypes.JSONB,
       allowNull: true,
     },
-    analysisDate: {
+    reportDate: {
       type: DataTypes.DATEONLY,
       allowNull: false,
       validate: {
@@ -56,8 +51,7 @@ const AnalysisReport = db.define(
   }
 );
 
+EventReport.belongsTo(User, { foreignKey: "userId" });
+EventReport.belongsTo(Event, { foreignKey: "eventId" });
 
-AnalysisReport.belongsTo(Event, { foreignKey: "eventId" });
-AnalysisReport.belongsTo(User, { foreignKey: "userId" });
-
-export default AnalysisReport;
+export default EventReport;

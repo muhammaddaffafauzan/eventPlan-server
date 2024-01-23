@@ -38,8 +38,9 @@ const Event = db.define(
       allowNull: false,
     },
     price: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.FLOAT,
       allowNull: false,
+      defaultValue: 0.0
     },
     start_date: {
       type: DataTypes.DATEONLY,

@@ -27,11 +27,11 @@ export const Login = async (req, res) => {
       },
     });
 
-    if (!user) return res.status(404).json({ msg: "User tidak ditemukan" });
+    if (!user) return res.status(404).json({ msg: "User not found" });
 
     const match = await bcryptjs.compare(req.body.password, user.password);
 
-    if (!match) return res.status(400).json({ msg: "Password salah" });
+    if (!match) return res.status(400).json({ msg: "Password wrong" });
 
     // Jika otentikasi berhasil, buat token akses dan refresh token
     const { accessToken, refreshToken } = generateTokens(user);
@@ -42,8 +42,8 @@ export const Login = async (req, res) => {
 
     res.json({ accessToken, refreshToken, role });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: "Terjadi kesalahan server" });
+    res.status(500).json({msg: error.message});
+        console.log(error)
   }
 };
 
@@ -51,6 +51,7 @@ export const Me = async (req, res) => {
   try {
     
   } catch (error) {
-
+    res.status(500).json({msg: error.message});
+    console.log(error)
   }
 };

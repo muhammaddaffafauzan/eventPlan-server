@@ -35,9 +35,10 @@ export const createAdminUsers = async (req, res) => {
       password: hashPassword,
       role: 'admin',
     });
-    res.status(201).json({ msg: "register berhasil" });
+    res.status(201).json({ msg: "register succes" });
   } catch (error) {
-    res.status(400).json({ msg: error.message });
+    console.error("Error create user:", error);
+    res.status(400).json({msg: error.message});
   }
 };
 
@@ -52,7 +53,7 @@ export const updateUsers = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ msg: "User tidak ditemukan" });
+      return res.status(404).json({ msg: "User not found" });
     }
 
     const { name, email, password, confPassword, role } = req.body;
@@ -67,7 +68,7 @@ export const updateUsers = async (req, res) => {
     }
 
     if (password && password !== confPassword) {
-      return res.status(400).json({ msg: "Password dan ConfirmPassword tidak cocok" });
+      return res.status(400).json({ msg: "Password and Confirmation Password does not match" });
     }
 
     if (password) {
@@ -85,10 +86,10 @@ export const updateUsers = async (req, res) => {
       },
     });
 
-    res.status(200).json({ msg: "User berhasil diperbarui" });
+    res.status(200).json({ msg: "User updated successfully" });
   } catch (error) {
     console.error("Error updating user:", error);
-    res.status(500).json({ msg: "Internal Server Error" });
+    res.status(400).json({msg: error.message});
   }
 };
 
@@ -98,15 +99,16 @@ export const deleteUsers = async (req, res) => {
       uuid: req.params.uuid,
     },
   });
-  if (!user) return res.status(404).json({ msg: "user tidak ditemukan" });
+  if (!user) return res.status(404).json({ msg: "User not found" });
   try {
     await User.destroy({
       where: {
         id: user.id,
       },
     });
-    res.status(200).json({ msg: "Users deleted" });
+    res.status(200).json({ msg: "User deleted" });
   } catch (error) {
-    res.status(400).json({ msg: error.message });
+    res.status(400).json({msg: error.message});
+    console.log(error)
   }
 };
