@@ -25,20 +25,24 @@ export const getUsersById = async (req, res) => {
   }
 };
 export const createAdminUsers = async (req, res) => {
-  const { usename, email, password } = req.body;
+  const { username, email, password, confPassword } = req.body;
   const salt = await bcryptjs.genSalt();
   const hashPassword = await bcryptjs.hash(password, salt);
+
+  if (password !== confPassword) {
+    return res.status(400).json({ msg: 'Password dan konfirmasi password tidak cocok' });
+  }
+
   try {
     await User.create({
-      usename: usename,
+      username: username,
       email: email,
       password: hashPassword,
-      role: 'admin',
+      role: "admin",
     });
-    res.status(201).json({ msg: "register succes" });
+    res.status(201).json({ msg: "register berhasil" });
   } catch (error) {
-    console.error("Error create user:", error);
-    res.status(400).json({msg: error.message});
+    res.status(400).json({ msg: error.message });
   }
 };
 
