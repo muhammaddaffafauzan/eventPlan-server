@@ -1,6 +1,8 @@
 import Profile from "../models/ProfileModel.js";
 import User from "../models/UsersModel.js";
 import bcryptjs from "bcryptjs";
+import fs from "fs";
+import path from "path";
 
 export const getAllProfileUsers = async (req, res) => {
   try {
@@ -8,7 +10,7 @@ export const getAllProfileUsers = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ["id", "username", "email"],
+          attributes: ["id", "uuid", "username", "email"],
         },
       ],
     });
@@ -20,20 +22,15 @@ export const getAllProfileUsers = async (req, res) => {
 };
 
 export const getProfileUsersByUuid = async (req, res) => {
-  const profile = await Profile.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
   try {
     const response = await Profile.findOne({
       where: {
-        id: profile.id,
+        uuid: req.params.uuid
       },
       include: [
         {
           model: User,
-          attributes: ["id", "username", "email"],
+          attributes: ["id", "uuid", "username", "email"],
         },
       ],
     });
@@ -69,7 +66,8 @@ export const createProfileAndUser = async (req, res) => {
 
     if (req.files === null)
       return res.status(400).json({ msg: "No File Uploaded" });
-    const file = req.files.file;
+
+    const file = req.files.inputFile;
     const fileSize = file.data.length;
     const ext = path.extname(file.name);
     const fileName = file.md5 + ext;
@@ -81,7 +79,7 @@ export const createProfileAndUser = async (req, res) => {
     if (fileSize > 5000000)
       return res.status(422).json({ msg: "Image must be less than 5MB" });
 
-    file.mv(`./public/images/${fileName}`, async (err) => {
+    file.mv(`./storage/images/${fileName}`, async (err) => {
       if (err) return res.status(500).json({ msg: err.message });
     });
 
@@ -92,7 +90,6 @@ export const createProfileAndUser = async (req, res) => {
       role: "user",
     });
 
-    // Buat profil baru terkait dengan pengguna
     const newProfile = await Profile.create({
       userId: newUser.id,
       firstName,
@@ -109,7 +106,6 @@ export const createProfileAndUser = async (req, res) => {
 
     res.status(201).json({
       message: "Register success",
-      user: newUser,
       profile: newProfile,
     });
   } catch (error) {
@@ -122,29 +118,35 @@ export const createProfileAndUser = async (req, res) => {
 export const updateProfileUser = async (req, res) => {
   const profile = await Profile.findOne({
     where: {
-      uuid: req.params.uuid,
+      userId: req.userId,
     },
   });
-  if (!profile) return res.status(404).json({ msg: "Data not found" });
+  
+  if (!profile) {
+    return res.status(404).json({ msg: "Data not found" });
+  }
 
   let fileName = "";
 
   if (req.files === null) {
     fileName = profile.image;
   } else {
-    const file = req.files.file;
+    const file = req.files.inputFile;
     const fileSize = file.data.length;
     const ext = path.extname(file.name);
     fileName = file.md5 + ext;
 
     const allowedType = [".png", ".jpg", ".jpeg"];
 
-    if (!allowedType.includes(ext.toLowerCase()))
+    if (!allowedType.includes(ext.toLowerCase())) {
       return res.status(422).json({ msg: "Invalid image" });
-    if (fileSize > 5000000)
-      return res.status(422).json({ msg: "Images must be less than 5MB" });
+    }
 
-    const filepath = `./public/images/${profile.image}`;
+    if (fileSize > 5000000) {
+      return res.status(422).json({ msg: "Images must be less than 5MB" });
+    }
+
+    const filepath = `./storage/images/${profile.image}`;
 
     if (fs.existsSync(filepath)) {
       try {
@@ -157,10 +159,13 @@ export const updateProfileUser = async (req, res) => {
       console.warn(`File ${filepath} not found`);
     }
 
-    file.mv(`./public/images/${fileName}`, (err) => {
-      if (err) return res.status(500).json({ msg: err.message });
+    file.mv(`./storage/images/${fileName}`, (err) => {
+      if (err) {
+        return res.status(500).json({ msg: err.message });
+      }
     });
   }
+
   const {
     firstName,
     lastName,
@@ -192,8 +197,53 @@ export const updateProfileUser = async (req, res) => {
         },
       }
     );
+
+    res.status(201).json({
+      message: `Profile ${profile.firstName} ${profile.lastName} has updated`,
+    });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error.message);
+  }
+};
+
+
+export const deleteProfileImage = async (req, res) => {
+  try {
+    const profile = await Profile.findOne({
+      where: {
+        userId: req.userId,
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ msg: "Profile not found" });
+    }
+
+    const imagePath = `./storage/images/${profile.image}`;
+
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+      console.log(`File ${imagePath} successfully deleted`);
+    } else {
+      console.warn(`File ${imagePath} not found`);
+    }
+
+    await Profile.update(
+      {
+        image: null,
+        url: null,
+      },
+      {
+        where: {
+          id: profile.id,
+        },
+      }
+    );
+
+    res.status(200).json({ msg: "Profile image deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: error.message });
   }
 };

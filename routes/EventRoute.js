@@ -15,6 +15,8 @@ import {
   updateEventValidation,
   eventFavorite,
   removeEventFromFavorites,
+  addTagsForEvent,
+  deleteTagsForEvent
 } from "../controllers/EventController.js";
 import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
 
@@ -34,6 +36,7 @@ router.patch("/event/checklist/update/:uuid", verifyUser, updateChecklistForEven
 router.patch("/event/checklist/delete/:uuid", verifyUser, deleteChecklistForEvent);
 router.patch("/event/favorite", verifyUser, eventFavorite);
 router.patch("/event/favorite/delete", verifyUser, removeEventFromFavorites);
-
+router.post("/event/tags/:uuid", verifyUser, addTagsForEvent);
+router.delete("/event/tags/delete/:uuid", verifyUser, deleteTagsForEvent);
 
 export default router;

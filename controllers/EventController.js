@@ -4,8 +4,8 @@ import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
 import User from "../models/UsersModel.js";
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export const getAllEvent = async (req, res) => {
   try {
@@ -19,7 +19,7 @@ export const getAllEvent = async (req, res) => {
         },
         {
           model: Event_loc,
-        }
+        },
       ],
     });
     res.status(201).json(response);
@@ -82,7 +82,7 @@ export const getEventById = async (req, res) => {
         },
         {
           model: Event_loc,
-        }
+        },
       ],
     });
 
@@ -143,10 +143,9 @@ export const createEvent = async (req, res) => {
     technical,
     description,
     language,
-    tags
   } = req.body;
   try {
-  const newEvent =  await Event.create({
+    const newEvent = await Event.create({
       userId: req.userId,
       title: title,
       organizer: organizer,
@@ -162,14 +161,79 @@ export const createEvent = async (req, res) => {
       description: description,
       language: language,
     });
-    await Event_tags.create({
-      eventId: newEvent.id,
-      tags: tags
-    })
-    res.status(201).json("event succes has create");
+
+    res.status(201).json({ msg: "event succes has create" });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error);
+  }
+};
+
+export const addTagsForEvent = async (req, res) => {
+  const { uuid } = req.params;
+  const { tags } = req.body;
+
+  try {
+    const event = await Event.findOne({
+      where: { uuid },
+    });
+
+    if (!event) {
+      return res.status(404).json({ msg: "Event not found" });
+    }
+
+    await createEventTags(event.id, tags);
+
+    res.status(201).json({ msg: "Tags added to event successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: error.message });
+  }
+};
+
+const createEventTags = async (eventId, tags) => {
+  try {
+    const newEventTags = await Event_tags.create({
+      eventId,
+      tags,
+    });
+    return newEventTags;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const deleteTagsForEvent = async (req, res) => {
+  const { uuid } = req.params;
+
+  try {
+    const event = await Event.findOne({
+      where: { uuid },
+    });
+
+    if (!event) {
+      return res.status(404).json({ msg: "Event not found" });
+    }
+
+    // Panggil fungsi deleteEventTags untuk menghapus tags dari event
+    await deleteEventTags(event.id);
+
+    res.status(200).json({ msg: "Tags deleted from event successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: error.message });
+  }
+};
+
+const deleteEventTags = async (eventId) => {
+  try {
+    await Event_tags.destroy({
+      where: { eventId },
+    });
+  } catch (error) {
+    console.error(error);
+    throw error;
   }
 };
 
@@ -187,7 +251,6 @@ export const addLocationForEvent = async (req, res) => {
       res.status(404).json({ msg: "Event not found" });
     }
 
-    // Tambahkan lokasi event ke dalam database
     const newLocation = await Event_loc.create({
       eventId: event.id,
       city,
@@ -356,7 +419,8 @@ export const updateChecklistForEvent = async (req, res) => {
 
     // Update checklist
     existingChecklist.item = item || existingChecklist.item;
-    existingChecklist.status = status !== undefined ? status : existingChecklist.status;
+    existingChecklist.status =
+      status !== undefined ? status : existingChecklist.status;
     existingChecklist.date_updated = new Date();
 
     await existingChecklist.save();
@@ -476,7 +540,11 @@ export const updateEventValidation = async (req, res) => {
   try {
     // Pastikan pengguna yang memanggil fungsi memiliki role "admin"
     if (req.role !== "admin") {
-      return res.status(403).json({ msg: "Access forbidden. Only admin can update validation status." });
+      return res
+        .status(403)
+        .json({
+          msg: "Access forbidden. Only admin can update validation status.",
+        });
     }
 
     // Temukan event berdasarkan uuid

@@ -4,7 +4,7 @@ import bcryptjs from "bcryptjs";
 export const getUsers = async (req, res) => {
   try {
     const response = await User.findAll({
-      attributes: ["id", "uuid", "name", "email", "role"],
+      attributes: ["id", "uuid", "username", "email", "role"],
     });
     res.status(200).json(response);
   } catch (error) {
@@ -14,7 +14,7 @@ export const getUsers = async (req, res) => {
 export const getUsersById = async (req, res) => {
   try {
     const response = await User.findOne({
-      attributes: ["uuid", "name", "email", "role"],
+      attributes: ["uuid", "username", "email", "role"],
       where: {
         uuid: req.params.uuid,
       },
@@ -30,7 +30,7 @@ export const createAdminUsers = async (req, res) => {
   const hashPassword = await bcryptjs.hash(password, salt);
 
   if (password !== confPassword) {
-    return res.status(400).json({ msg: 'Password dan konfirmasi password tidak cocok' });
+    return res.status(400).json({ msg: 'Password and confirmation password do not match' });
   }
 
   try {
@@ -40,7 +40,7 @@ export const createAdminUsers = async (req, res) => {
       password: hashPassword,
       role: "admin",
     });
-    res.status(201).json({ msg: "register berhasil" });
+    res.status(201).json({ msg: "register successfully" });
   } catch (error) {
     res.status(400).json({ msg: error.message });
   }
@@ -50,7 +50,6 @@ export const createAdminUsers = async (req, res) => {
 export const updateUsers = async (req, res) => {
   try {
     const user = await User.findOne({
-      attributes: ["id", "uuid", "username", "email", "role"],
       where: {
         uuid: req.params.uuid,
       },
@@ -109,7 +108,7 @@ export const deleteUsers = async (req, res) => {
       where: {
         id: user.id,
       },
-    });
+    }); 
     res.status(200).json({ msg: "User deleted" });
   } catch (error) {
     res.status(400).json({msg: error.message});
