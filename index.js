@@ -1,16 +1,16 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import multer from "multer";
-import path from "path";
-import db from "./config/Database.js";
-import UsersRoute from "./routes/UsersRoute.js";
-import AuthRoute from "./routes/AuthRoute.js";
-import EventRoute from "./routes/EventRoute.js";
-import FollowersRoute from "./routes/FollowersRoute.js";
-import ProfileRoute from "./routes/ProfileRoute.js";
-import EventTypesRoutes from "./routes/EventTypesRoutes.js";
-import EventCategoriesRoutes from "./routes/EventCategoriesRoutes.js";
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import fileUpload from 'express-fileupload';
+import path from 'path';
+import db from './config/Database.js';
+import UsersRoute from './routes/UsersRoute.js';
+import AuthRoute from './routes/AuthRoute.js';
+import EventRoute from './routes/EventRoute.js';
+import FollowersRoute from './routes/FollowersRoute.js';
+import ProfileRoute from './routes/ProfileRoute.js';
+import EventTypesRoutes from './routes/EventTypesRoutes.js';
+import EventCategoriesRoutes from './routes/EventCategoriesRoutes.js';
 
 dotenv.config();
 
@@ -23,18 +23,6 @@ try {
   console.error('Error connecting to the database:', error);
 }
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'storage/images'); // Ganti direktori penyimpanan sesuai kebutuhan Anda
-  },
-  filename: function (req, file, cb) {
-    // Logika penamaan file sesuai kebutuhan Anda
-    cb(null, file.fieldname + '-' + Date.now());
-  },
-});
-
-const upload = multer({ storage: storage });
-
 app.use(cors({
   origin: '',
   credentials: true,
@@ -42,7 +30,8 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cors());
-app.use(upload.any());
+app.use(fileUpload());
+app.use(express.static("public"));
 app.use(UsersRoute);
 app.use(AuthRoute);
 app.use(EventRoute);

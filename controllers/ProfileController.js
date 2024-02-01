@@ -25,7 +25,7 @@ export const getProfileUsersByUuid = async (req, res) => {
   try {
     const response = await Profile.findOne({
       where: {
-        uuid: req.params.uuid
+        uuid: req.params.uuid,
       },
       include: [
         {
@@ -64,22 +64,27 @@ export const createProfileAndUser = async (req, res) => {
         .json({ message: "Password dan Confirm Password tidak cocok" });
     }
 
-    if (req.files === null)
-      return res.status(400).json({ msg: "No File Uploaded" });
-
     const file = req.files.inputFile;
+
+    if (!file) {
+      return res.status(400).json({ msg: "No File Uploaded" });
+    }
+
     const fileSize = file.data.length;
     const ext = path.extname(file.name);
     const fileName = file.md5 + ext;
     const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
     const allowedType = [".png", ".jpg", "jpeg"];
 
-    if (!allowedType.includes(ext.toLocaleLowerCase()))
+    if (!allowedType.includes(ext.toLocaleLowerCase())) {
       return res.status(422).json({ msg: "Invalid Image" });
-    if (fileSize > 5000000)
-      return res.status(422).json({ msg: "Image must be less than 5MB" });
+    }
 
-    file.mv(`./storage/images/${fileName}`, async (err) => {
+    if (fileSize > 5000000) {
+      return res.status(422).json({ msg: "Image must be less than 5MB" });
+    }
+
+    file.mv(`./public/images/${fileName}`, async (err) => {
       if (err) return res.status(500).json({ msg: err.message });
     });
 
@@ -121,14 +126,14 @@ export const updateProfileUser = async (req, res) => {
       userId: req.userId,
     },
   });
-  
+
   if (!profile) {
     return res.status(404).json({ msg: "Data not found" });
   }
 
   let fileName = "";
 
-  if (req.files === null) {
+  if (req.files === null || req.files.inputFile === undefined) {
     fileName = profile.image;
   } else {
     const file = req.files.inputFile;
@@ -146,7 +151,7 @@ export const updateProfileUser = async (req, res) => {
       return res.status(422).json({ msg: "Images must be less than 5MB" });
     }
 
-    const filepath = `./storage/images/${profile.image}`;
+    const filepath = `./public/images/${profile.image}`;
 
     if (fs.existsSync(filepath)) {
       try {
@@ -159,10 +164,18 @@ export const updateProfileUser = async (req, res) => {
       console.warn(`File ${filepath} not found`);
     }
 
-    file.mv(`./storage/images/${fileName}`, (err) => {
+    file.mv(`../storage/${fileName}`, (err) => {
       if (err) {
-        return res.status(500).json({ msg: err.message });
+        console.error(`Error moving file: ${err}`);
+        return res.status(500).json({ msg: "Error moving file" });
       }
+    });
+
+    console.log("file:", file); // Cek apakah file terdeteksi
+    console.log("fileName:", fileName); // Cek apakah fileName sesuai
+
+    file.mv(`./public/images/${fileName}`, (err) => {
+      if (err) return res.status(500).json({ msg: err.message });
     });
   }
 
@@ -207,7 +220,6 @@ export const updateProfileUser = async (req, res) => {
   }
 };
 
-
 export const deleteProfileImage = async (req, res) => {
   try {
     const profile = await Profile.findOne({
@@ -220,7 +232,7 @@ export const deleteProfileImage = async (req, res) => {
       return res.status(404).json({ msg: "Profile not found" });
     }
 
-    const imagePath = `./storage/images/${profile.image}`;
+    const imagePath = `./public/images/${profile.image}`;
 
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);

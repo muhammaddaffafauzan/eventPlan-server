@@ -11,9 +11,9 @@ import { verifyUser } from '../middleware/AuthUser.js';
 const router = express.Router();
 
 router.get('/profiles', getAllProfileUsers);
-router.get('/profiles/:uuid', getProfileUsersByUuid);
-router.post('/profiles/users/create', createProfileAndUser);
-router.patch('/profiles/update', verifyUser, updateProfileUser);
+router.get('/profile/:uuid', getProfileUsersByUuid);
+router.post('/profile/users/create', createProfileAndUser);
+router.patch('/profile/update', verifyUser, updateProfileUser);
 router.delete("/profile/image/delete", verifyUser, deleteProfileImage);
 
 export default router;
