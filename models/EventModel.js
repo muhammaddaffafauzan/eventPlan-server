@@ -81,7 +81,7 @@ const Event = db.define(
       allowNull: false,
     },
     admin_validation: {
-      type: DataTypes.ENUM('Menunggu Validasi', 'Disetujui', 'Ditolak'),
+      type: DataTypes.ENUM('Reviewed', 'Approved', 'Denied'),
       allowNull: true,
     }
   },

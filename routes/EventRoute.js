@@ -1,6 +1,7 @@
 import express from "express";
 import {
-  getAllEvent,
+  getAllEventsForAdmin,
+  getAllEventsForNonAdmin,
   getEventForUser,
   getEventById,
   createEvent,
@@ -21,7 +22,8 @@ import {
 import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
 
 const router = express.Router();
-router.get("/event", getAllEvent);
+router.get("/event/admin", verifyUser, adminOnly, getAllEventsForAdmin);
+router.get("/events", getAllEventsForNonAdmin);
 router.get("/event/user", verifyUser, getEventForUser);
 router.get("/event/:uuid", getEventById);
 router.post("/event/create", verifyUser, createEvent);

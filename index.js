@@ -23,6 +23,10 @@ try {
   console.error('Error connecting to the database:', error);
 }
 
+// (async()=>{
+//     await db.sync();
+// })()
+
 app.use(cors({
   origin: '',
   credentials: true,

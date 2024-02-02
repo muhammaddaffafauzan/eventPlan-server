@@ -7,7 +7,7 @@ import User from "../models/UsersModel.js";
 import fs from "fs";
 import path from "path";
 
-export const getAllEvent = async (req, res) => {
+export const getAllEventsForAdmin = async (req, res) => {
   try {
     const response = await Event.findAll({
       include: [
@@ -21,6 +21,31 @@ export const getAllEvent = async (req, res) => {
           model: Event_loc,
         },
       ],
+    });
+    res.status(201).json(response);
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+    console.log(error);
+  }
+};
+
+export const getAllEventsForNonAdmin = async (req, res) => {
+  try {
+    const response = await Event.findAll({
+      include: [
+        {
+          model: Event_img,
+        },
+        {
+          model: Event_tags,
+        },
+        {
+          model: Event_loc,
+        },
+      ],
+      where: {
+        admin_validation: "Approved",
+      },
     });
     res.status(201).json(response);
   } catch (error) {
@@ -145,7 +170,7 @@ export const createEvent = async (req, res) => {
     language,
   } = req.body;
   try {
-    const newEvent = await Event.create({
+      await Event.create({
       userId: req.userId,
       title: title,
       organizer: organizer,
@@ -160,6 +185,7 @@ export const createEvent = async (req, res) => {
       technical: technical,
       description: description,
       language: language,
+      admin_validation: "Reviewed"
     });
 
     res.status(201).json({ msg: "event succes has create" });
