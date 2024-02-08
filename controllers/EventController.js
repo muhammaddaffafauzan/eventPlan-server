@@ -318,8 +318,8 @@ export const addImageForEvent = async (req, res) => {
 
     if (!allowedType.includes(ext.toLocaleLowerCase()))
       return res.status(422).json({ msg: "Invalid Image" });
-    if (fileSize > 5000000)
-      return res.status(422).json({ msg: "Image must be less than 5MB" });
+    if (fileSize > 2000000)
+      return res.status(422).json({ msg: "Image must be less than 2MB" });
 
     file.mv(`./public/images/${fileName}`, async (err) => {
       if (err) return res.status(500).json({ msg: err.message });
@@ -341,12 +341,11 @@ export const addImageForEvent = async (req, res) => {
 };
 
 export const deleteImageForEvent = async (req, res) => {
-  const { uuid, imageId } = req.params;
 
   // Temukan event berdasarkan uuid
   const event = await Event.findOne({
     where: {
-      uuid: uuid,
+      uuid: req.params.uuid,
     },
   });
 
@@ -358,7 +357,6 @@ export const deleteImageForEvent = async (req, res) => {
     // Temukan informasi gambar berdasarkan id
     const image = await Event_img.findOne({
       where: {
-        id: imageId,
         eventId: event.id,
       },
     });
@@ -374,7 +372,7 @@ export const deleteImageForEvent = async (req, res) => {
     // Hapus informasi gambar dari database
     await Event_img.destroy({
       where: {
-        id: imageId,
+        id: image.id,
       },
     });
 
@@ -548,6 +546,21 @@ export const deleteEvent = async (req, res) => {
   if (!event) {
     res.status(404).json({ msg: "Event not found" });
   }
+
+  const image = await Event_img.findAll({
+    where: {
+      eventId: event.id,
+    },
+  });
+
+  if (!image) {
+    return res.status(404).json({ msg: "Image not found" });
+  }
+
+  // Hapus file gambar dari direktori
+  const imagePath = path.join(__dirname, `../public/images/${image.image}`);
+  fs.unlinkSync(imagePath);
+
   try {
     await Event.destroy({
       where: {

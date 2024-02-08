@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fileUpload from 'express-fileupload';
-import path from 'path';
 import db from './config/Database.js';
 import UsersRoute from './routes/UsersRoute.js';
 import AuthRoute from './routes/AuthRoute.js';

@@ -80,8 +80,8 @@ export const createProfileAndUser = async (req, res) => {
       return res.status(422).json({ msg: "Invalid Image" });
     }
 
-    if (fileSize > 5000000) {
-      return res.status(422).json({ msg: "Image must be less than 5MB" });
+    if (fileSize > 2000000) {
+      return res.status(422).json({ msg: "Image must be less than 2MB" });
     }
 
     file.mv(`./public/images/${fileName}`, async (err) => {
@@ -147,8 +147,8 @@ export const updateProfileUser = async (req, res) => {
       return res.status(422).json({ msg: "Invalid image" });
     }
 
-    if (fileSize > 5000000) {
-      return res.status(422).json({ msg: "Images must be less than 5MB" });
+    if (fileSize > 2000000) {
+      return res.status(422).json({ msg: "Images must be less than 2MB" });
     }
 
     const filepath = `./public/images/${profile.image}`;
@@ -164,7 +164,7 @@ export const updateProfileUser = async (req, res) => {
       console.warn(`File ${filepath} not found`);
     }
 
-    file.mv(`../storage/${fileName}`, (err) => {
+    file.mv(`./public/images/${fileName}`, (err) => {
       if (err) {
         console.error(`Error moving file: ${err}`);
         return res.status(500).json({ msg: "Error moving file" });
