@@ -321,7 +321,7 @@ export const addImageForEvent = async (req, res) => {
     if (fileSize > 2000000)
       return res.status(422).json({ msg: "Image must be less than 2MB" });
 
-    file.mv(`./public/images/${fileName}`, async (err) => {
+    file.mv(`../public/images/${fileName}`, async (err) => {
       if (err) return res.status(500).json({ msg: err.message });
     });
     const newImage = await Event_img.create({
