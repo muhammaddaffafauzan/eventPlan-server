@@ -1,18 +1,31 @@
 import Event from "../models/EventModel.js";
-import Event_img from "../models/EventImageModel.js";
 import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
 import User from "../models/UsersModel.js";
+import Followers from "../models/FollowersModel.js";
+import Profile from "../models/ProfileModel.js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import db from "../config/Database.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 export const getAllEventsForAdmin = async (req, res) => {
   try {
-    const response = await Event.findAll({
+    const events = await Event.findAll({
       include: [
         {
-          model: Event_img,
+          model: User,
+          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          include: [
+            {
+              model: Profile,
+            },
+          ],
         },
         {
           model: Event_tags,
@@ -21,20 +34,30 @@ export const getAllEventsForAdmin = async (req, res) => {
           model: Event_loc,
         },
       ],
-    });
-    res.status(201).json(response);
+    });    
+
+    res.status(201).json(events);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
 };
 
+
+
+
 export const getAllEventsForNonAdmin = async (req, res) => {
   try {
     const response = await Event.findAll({
       include: [
         {
-          model: Event_img,
+          model: User,
+          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          include: [
+            {
+              model: Profile,
+            },
+          ],
         },
         {
           model: Event_tags,
@@ -47,45 +70,9 @@ export const getAllEventsForNonAdmin = async (req, res) => {
         admin_validation: "Approved",
       },
     });
-    res.status(201).json(response);
-  } catch (error) {
-    res.status(500).json({ msg: error.message });
-    console.log(error);
-  }
-};
 
-export const getEventForUser = async (req, res) => {
-  const user = await User.findOne({
-    where: {
-      id: req.userId,
-    },
-  });
-  try {
-    let response;
-    if (req.role === "user") {
-      response = await Event.findAll({
-        where: {
-          userId: user.id,
-        },
-        include: [
-          {
-            model: Event_img,
-          },
-          {
-            model: Event_tags,
-          },
-          {
-            model: Event_loc,
-          },
-          {
-            model: Event_check,
-          },
-        ],
-      });
-      res.status(200).json(response);
-    } else {
-      res.status(403).json({ msg: "Access for users only" });
-    }
+
+    res.status(201).json(response);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -100,7 +87,13 @@ export const getEventById = async (req, res) => {
       },
       include: [
         {
-          model: Event_img,
+          model: User,
+          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          include: [
+            {
+              model: Profile,
+            },
+          ],
         },
         {
           model: Event_tags,
@@ -129,10 +122,17 @@ export const getEventById = async (req, res) => {
     const updatedEvent = await Event.findOne({
       where: {
         uuid: req.params.uuid,
+        admin_validation: "Approved",
       },
       include: [
         {
-          model: Event_img,
+          model: User,
+          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          include: [
+            {
+              model: Profile,
+            },
+          ],
         },
         {
           model: Event_tags,
@@ -140,13 +140,45 @@ export const getEventById = async (req, res) => {
         {
           model: Event_loc,
         },
-        {
-          model: Event_check,
-        },
       ],
     });
 
     res.status(200).json(updatedEvent);
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+    console.log(error);
+  }
+};
+
+export const getEventForUser = async (req, res) => {
+  const user = await User.findOne({
+    where: {
+      id: req.userId,
+    },
+  });
+  try {
+    let response;
+    if (req.role === "user") {
+      response = await Event.findAll({
+        where: {
+          userId: user.id,
+        },
+        include: [
+          {
+            model: Event_tags,
+          },
+          {
+            model: Event_loc,
+          },
+          {
+            model: Event_check,
+          },
+        ],
+      });
+      res.status(200).json(response);
+    } else {
+      res.status(403).json({ msg: "Access for users only" });
+    }
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -169,11 +201,36 @@ export const createEvent = async (req, res) => {
     description,
     language,
   } = req.body;
+
+  const userRole = req.role;
+
+  if (req.files === null)
+    return res.status(400).json({ msg: "No File Uploaded" });
+
+  const file = req.files.inputFile;
+  const fileSize = file.data.length;
+  const ext = path.extname(file.name);
+  const fileName = file.md5 + ext;
+  const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
+  const allowedType = [".png", ".jpg", "jpeg"];
+
+  if (!allowedType.includes(ext.toLocaleLowerCase()))
+    return res.status(422).json({ msg: "Invalid Image" });
+  if (fileSize > 2000000)
+    return res.status(422).json({ msg: "Image must be less than 2MB" });
+
+  const imagePath = path.join(__dirname, '../public/images/', fileName);
+
+  file.mv(imagePath, async (err) => {
+    if (err) return res.status(500).json({ msg: err.message });
+  });
+
   try {
-      await Event.create({
+    // Buat event tanpa menyertakan tag terlebih dahulu
+    const newEvent = await Event.create({
       userId: req.userId,
       title: title,
-      organizer: organizer,
+      organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
       type: type,
       category: category,
       price: price,
@@ -185,10 +242,123 @@ export const createEvent = async (req, res) => {
       technical: technical,
       description: description,
       language: language,
-      admin_validation: "Reviewed"
+      admin_validation: userRole === 'admin' ? "Approved" :  "Reviewed",
+      image: fileName,
+      url: url,
     });
 
-    res.status(201).json({ msg: "event succes has create" });
+    const tags = req.body.tags;
+
+    await createEventTags(newEvent.id, tags);
+
+    res.status(201).json({ msg: "Event and tags created successfully" });
+  } catch (error) {
+    res.status(501).json({ msg: error.message });
+    console.log(error);
+  }
+};
+
+export const updateEvent = async (req, res) => {
+  const event = await Event.findOne({
+    where: {
+      uuid: req.params.uuid,
+    },
+  });
+  if (!event) {
+    res.status(404).json({ msg: "Event not found" });
+  }
+  let fileName = "";
+
+  if (req.files === null || req.files.inputFile === undefined) {
+    fileName = event.image;
+  } else {
+    const file = req.files.inputFile;
+    const fileSize = file.data.length;
+    const ext = path.extname(file.name);
+    fileName = file.md5 + ext;
+
+    const allowedType = [".png", ".jpg", ".jpeg"];
+
+    if (!allowedType.includes(ext.toLowerCase())) {
+      return res.status(422).json({ msg: "Invalid image" });
+    }
+
+    if (fileSize > 2000000) {
+      return res.status(422).json({ msg: "Images must be less than 2MB" });
+    }
+
+    const filepath = `../public/images/${event.image}`;
+
+    if (fs.existsSync(filepath)) {
+      try {
+        fs.unlinkSync(filepath);
+        console.log(`File ${filepath} successfully deleted`);
+      } catch (err) {
+        console.error(`Failed to delete file ${filepath}: ${err}`);
+      }
+    } else {
+      console.warn(`File ${filepath} not found`);
+    }
+
+    file.mv(`../public/images/${fileName}`, (err) => {
+      if (err) {
+        console.error(`Error moving file: ${err}`);
+        return res.status(500).json({ msg: "Error moving file" });
+      }
+    });
+
+    console.log("file:", file); // Cek apakah file terdeteksi
+    console.log("fileName:", fileName); // Cek apakah fileName sesuai
+
+    file.mv(`../public/images/${fileName}`, (err) => {
+      if (err) return res.status(500).json({ msg: err.message });
+    });
+  }
+  const {
+    title,
+    organizer,
+    type,
+    category,
+    price,
+    start_date,
+    end_date,
+    start_time,
+    end_time,
+    type_location,
+    technical,
+    description,
+    language,
+  } = req.body;
+
+  const userRole = req.role;
+
+  try {
+    await Event.update(
+      {
+        userId: req.userId,
+        title: title,
+        organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
+        type: type,
+        category: category,
+        price: price,
+        start_date: start_date,
+        end_date: end_date,
+        start_time: start_time,
+        end_time: end_time,
+        type_location: type_location,
+        technical: technical,
+        description: description,
+        language: language,
+        image: fileName,
+        url: `${req.protocol}://${req.get("host")}/images/${fileName}`,
+      },
+      {
+        where: {
+          id: event.id,
+        },
+      }
+    );
+    res.status(201).json("event has updated");
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error);
@@ -217,18 +387,29 @@ export const addTagsForEvent = async (req, res) => {
   }
 };
 
+
 const createEventTags = async (eventId, tags) => {
   try {
+    // Convert the tags array to a JSON string
+    const tagsString = JSON.stringify(tags);
+
     const newEventTags = await Event_tags.create({
       eventId,
-      tags,
+      tags: tagsString,
     });
+
+    // Parse the tags string back to an array
+    newEventTags.tags = JSON.parse(newEventTags.tags);
+
     return newEventTags;
   } catch (error) {
     console.error(error);
     throw error;
   }
 };
+
+
+
 
 export const deleteTagsForEvent = async (req, res) => {
   const { uuid } = req.params;
@@ -262,6 +443,7 @@ const deleteEventTags = async (eventId) => {
     throw error;
   }
 };
+
 
 export const addLocationForEvent = async (req, res) => {
   const { city, state, country, address, lat, long } = req.body;
@@ -297,92 +479,6 @@ export const addLocationForEvent = async (req, res) => {
   }
 };
 
-export const addImageForEvent = async (req, res) => {
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-  if (!event) {
-    res.status(404).json({ msg: "Event not found" });
-  }
-  try {
-    if (req.files === null)
-      return res.status(400).json({ msg: "No File Uploaded" });
-    const file = req.files.file;
-    const fileSize = file.data.length;
-    const ext = path.extname(file.name);
-    const fileName = file.md5 + ext;
-    const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
-    const allowedType = [".png", ".jpg", "jpeg"];
-
-    if (!allowedType.includes(ext.toLocaleLowerCase()))
-      return res.status(422).json({ msg: "Invalid Image" });
-    if (fileSize > 2000000)
-      return res.status(422).json({ msg: "Image must be less than 2MB" });
-
-    file.mv(`../public/images/${fileName}`, async (err) => {
-      if (err) return res.status(500).json({ msg: err.message });
-    });
-    const newImage = await Event_img.create({
-      eventId: event.id,
-      image: fileName,
-      url: url,
-    });
-    res.status(201).json({
-      message: "Upload success",
-      image: newImage,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: error.message });
-    console.log(error);
-  }
-};
-
-export const deleteImageForEvent = async (req, res) => {
-
-  // Temukan event berdasarkan uuid
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-
-  if (!event) {
-    res.status(404).json({ msg: "Event not found" });
-  }
-
-  try {
-    // Temukan informasi gambar berdasarkan id
-    const image = await Event_img.findOne({
-      where: {
-        eventId: event.id,
-      },
-    });
-
-    if (!image) {
-      return res.status(404).json({ msg: "Image not found" });
-    }
-
-    // Hapus file gambar dari direktori
-    const imagePath = path.join(__dirname, `../public/images/${image.image}`);
-    fs.unlinkSync(imagePath);
-
-    // Hapus informasi gambar dari database
-    await Event_img.destroy({
-      where: {
-        id: image.id,
-      },
-    });
-
-    res.status(200).json({ msg: "Image deleted" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: error.message });
-    console.log(error);
-  }
-};
 
 export const addChecklistForEvent = async (req, res) => {
   const event = await Event.findOne({
@@ -497,45 +593,6 @@ export const deleteChecklistForEvent = async (req, res) => {
   }
 };
 
-export const updateEvent = async (req, res) => {
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-  if (!event) {
-    res.status(404).json({ msg: "Event not found" });
-  }
-  try {
-    await Event.update(
-      {
-        userId: req.userId,
-        title: title,
-        organizer: organizer,
-        type: type,
-        category: category,
-        price: price,
-        start_date: start_date,
-        end_date: end_date,
-        start_time: start_time,
-        end_time: end_time,
-        type_location: type_location,
-        technical: technical,
-        description: description,
-        language: language,
-      },
-      {
-        where: {
-          id: event.id,
-        },
-      }
-    );
-    res.status(201).json("event has updated");
-  } catch (error) {
-    res.status(501).json({ msg: error.message });
-    console.log(error);
-  }
-};
 
 export const deleteEvent = async (req, res) => {
   const event = await Event.findOne({
@@ -547,18 +604,12 @@ export const deleteEvent = async (req, res) => {
     res.status(404).json({ msg: "Event not found" });
   }
 
-  const image = await Event_img.findAll({
-    where: {
-      eventId: event.id,
-    },
-  });
-
-  if (!image) {
+  if (!event.image) {
     return res.status(404).json({ msg: "Image not found" });
   }
 
   // Hapus file gambar dari direktori
-  const imagePath = path.join(__dirname, `../public/images/${image.image}`);
+  const imagePath = path.join(__dirname, `../public/images/${event.image}`);
   fs.unlinkSync(imagePath);
 
   try {

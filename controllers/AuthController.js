@@ -1,5 +1,6 @@
 import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
+import Followers from "../models/FollowersModel.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -70,21 +71,37 @@ export const Me = async (req, res) => {
       },
       attributes: ["id", "uuid", "username", "email", "role"],
     });
-    let profile;
-    if (req.role === "user") {
-      profile = await Profile.findOne({
-        where: {
-          userId: user.id,
-        },
-      });
-    }
+
+    const profile = await Profile.findOne({
+      where: {
+        userId: user.id,
+      },
+    });
+
+    // Hitung jumlah pengikut user
+    const followersCount = await Followers.count({
+      where: {
+        followingId: user.id,
+      },
+    });
+
+    // Hitung jumlah yang diikuti oleh user
+    const followingCount = await Followers.count({
+      where: {
+        followerId: user.id,
+      },
+    });
+
     const responseAll = {
       user,
-      profile: profile
-    }
+      profile,
+      followersCount,
+      followingCount,
+    };
+
     res.status(200).json(responseAll);
   } catch (error) {
-    res.status(500).json({ msg: error.message });
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
   }
 };

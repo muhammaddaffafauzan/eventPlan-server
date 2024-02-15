@@ -8,16 +8,17 @@ const Event_tags = db.define(
   "event_tags",
   {
     eventId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          notEmpty: true,
-        },
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
       },
-    tags:{
-        type: DataTypes.STRING,
-        allowNull: false
-    }
+    },
+    tags: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+    },
   },
   {
     freezeTableName: true,
@@ -26,7 +27,5 @@ const Event_tags = db.define(
 
 Event.hasMany(Event_tags);
 Event_tags.belongsTo(Event, { foreignKey: "eventId" });
-
-
 
 export default Event_tags;

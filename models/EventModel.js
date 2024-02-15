@@ -1,6 +1,7 @@
 import { Sequelize } from "sequelize";
 import db from "../config/Database.js";
 import User from "./UsersModel.js";
+import Profile from "./ProfileModel.js";
 
 const { DataTypes } = Sequelize;
 
@@ -83,6 +84,14 @@ const Event = db.define(
     admin_validation: {
       type: DataTypes.ENUM('Reviewed', 'Approved', 'Denied'),
       allowNull: true,
+    },
+    image:{
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    url:{
+        type: DataTypes.STRING,
+        allowNull: false,
     }
   },
   {
@@ -91,6 +100,7 @@ const Event = db.define(
 );
 
 User.hasMany(Event);
+User.hasOne(Profile);
 Event.belongsTo(User, { foreignKey: "userId" });
 
 export default Event;

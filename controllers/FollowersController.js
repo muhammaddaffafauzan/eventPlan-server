@@ -1,9 +1,9 @@
 import Followers from "../models/FollowersModel.js";
 import User from "../models/UsersModel.js";
 import Event from "../models/EventModel.js";
-import Event_img from "../models/EventImageModel.js";
 import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
+import Profile from "../models/ProfileModel.js";
 
 export const followUser = async (req, res) => {
   try {
@@ -100,9 +100,6 @@ export const getEventsByFollowedUsers = async (req, res) => {
       },
       include: [
         {
-          model: Event_img,
-        },
-        {
           model: Event_tags,
         },
         {
@@ -112,6 +109,43 @@ export const getEventsByFollowedUsers = async (req, res) => {
     });
 
     res.status(200).json(events);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const getFollowersCountAndFollowingCount = async (req, res) => {
+  try {
+    const profile = await Profile.findOne({
+      where:{
+        uuid: req.params.uuid
+      }
+    });
+
+    const userId = profile.userId;
+
+    // Hitung jumlah pengikut user
+    const followersCount = await Followers.count({
+      where: {
+        followingId: userId,
+      },
+    });
+
+    // Hitung jumlah yang diikuti oleh user
+    const followingCount = await Followers.count({
+      where: {
+        followerId: userId,
+      },
+    });
+
+    // Gabungkan data dari dua respons ke dalam satu objek
+    const result = {
+      followersCount,
+      followingCount,
+    };
+
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Internal Server Error" });

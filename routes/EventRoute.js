@@ -6,8 +6,6 @@ import {
   getEventById,
   createEvent,
   addLocationForEvent,
-  addImageForEvent,
-  deleteImageForEvent,
   addChecklistForEvent,
   updateChecklistForEvent,
   deleteChecklistForEvent,
@@ -28,8 +26,6 @@ router.get("/event/user", verifyUser, getEventForUser);
 router.get("/event/:uuid", getEventById);
 router.post("/event/create", verifyUser, createEvent);
 router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
-router.post("/event/image/add/:uuid", verifyUser, addImageForEvent);
-router.post("/event/image/delete/:uuid", verifyUser, deleteImageForEvent);
 router.patch("/event/update/:uuid", verifyUser, updateEvent);
 router.delete("/event/delete/:uuid", verifyUser, deleteEvent);
 router.post("/event/validation/:uuid", verifyUser, adminOnly, updateEventValidation);
