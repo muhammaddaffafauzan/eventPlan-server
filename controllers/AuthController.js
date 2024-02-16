@@ -15,7 +15,7 @@ const generateTokens = (user) => {
       role: user.role,
     },
     process.env.JWT_SECRET, // Menggunakan secret key dari environment variable
-    { expiresIn: "1h" } // Token akses kadaluwarsa setelah 1 jam (bisa disesuaikan)
+    { expiresIn: "7d" } // Token akses kadaluwarsa setelah 1 jam (bisa disesuaikan)
   );
 
   // Membuat token refresh dengan menggunakan user information
@@ -65,12 +65,28 @@ export const Login = async (req, res) => {
 
 export const Me = async (req, res) => {
   try {
+     // Get the token from the request headers
+     const token = req.headers.authorization.split(' ')[1];
+
+     // Verify the token
+     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+ 
+     // Check if the token is still valid
+     const currentTime = new Date().getTime();
+     if (decodedToken.exp * 1000 < currentTime) {
+       return res.status(403).json({ msg: "Token expired" });
+     }
+ 
     const user = await User.findOne({
       where: {
         id: req.userId,
       },
       attributes: ["id", "uuid", "username", "email", "role"],
     });
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
     const profile = await Profile.findOne({
       where: {
@@ -105,3 +121,4 @@ export const Me = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
