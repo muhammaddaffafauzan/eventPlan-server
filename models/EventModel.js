@@ -100,7 +100,7 @@ const Event = db.define(
 );
 
 User.hasMany(Event);
-User.hasOne(Profile);
+User.hasMany(Profile);
 Event.belongsTo(User, { foreignKey: "userId" });
 
 export default Event;

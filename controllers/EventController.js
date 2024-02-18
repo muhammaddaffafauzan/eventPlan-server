@@ -3,13 +3,11 @@ import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
 import User from "../models/UsersModel.js";
-import Followers from "../models/FollowersModel.js";
 import Profile from "../models/ProfileModel.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import db from "../config/Database.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
