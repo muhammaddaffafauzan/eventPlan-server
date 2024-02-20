@@ -99,8 +99,8 @@ const Event = db.define(
   }
 );
 
+User.hasOne(Profile);
 User.hasMany(Event);
-User.hasMany(Profile);
 Event.belongsTo(User, { foreignKey: "userId" });
 
 export default Event;

@@ -3,7 +3,8 @@ import {
   getAllEventsForAdmin,
   getAllEventsForNonAdmin,
   getEventForUser,
-  getEventById,
+  getEventByIdForNonAdmin,
+  getEventByIdForAdmin,
   createEvent,
   addLocationForEvent,
   addChecklistForEvent,
@@ -23,7 +24,8 @@ const router = express.Router();
 router.get("/event/admin", verifyUser, adminOnly, getAllEventsForAdmin);
 router.get("/events", getAllEventsForNonAdmin);
 router.get("/event/user", verifyUser, getEventForUser);
-router.get("/event/:uuid", getEventById);
+router.get("/event/:uuid", getEventByIdForNonAdmin);
+router.get("/event/admin/:uuid", verifyUser, adminOnly, getEventByIdForAdmin);
 router.post("/event/create", verifyUser, createEvent);
 router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
 router.patch("/event/update/:uuid", verifyUser, updateEvent);

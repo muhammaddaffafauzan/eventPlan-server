@@ -5,6 +5,7 @@ import {
   getUsersById,
   getAdminById,
   createAdminUsers,
+  createUsers,
   updateUsersById,
   updateUser,
   updateAdmin,
@@ -18,6 +19,7 @@ router.get("/admin", verifyUser, adminOnly, getAdmin);
 router.get("/users/:uuid",  verifyUser, getUsersById);
 router.get("/admin/:uuid", verifyUser, adminOnly, getAdminById);
 router.post("/addAdmin", verifyUser, adminOnly, createAdminUsers);
+router.post("/create/user", createUsers);
 router.patch("/users/update/:uuid",  verifyUser, updateUsersById);
 router.patch("/user/update",  verifyUser, updateUser);
 router.patch("/admin/update",  verifyUser, adminOnly, updateAdmin);

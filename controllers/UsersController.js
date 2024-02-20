@@ -80,6 +80,27 @@ export const createAdminUsers = async (req, res) => {
   }
 };
 
+export const createUsers = async (req, res) => {
+  const { username, email, password, confPassword } = req.body;
+  const salt = await bcryptjs.genSalt();
+  const hashPassword = await bcryptjs.hash(password, salt);
+
+  if (password !== confPassword) {
+    return res.status(400).json({ msg: 'Password and confirmation password do not match' });
+  }
+
+  try {
+    await User.create({
+      username: username,
+      email: email,
+      password: hashPassword,
+      role: "user",
+    });
+    res.status(201).json({ msg: "create user account successfully" });
+  } catch (error) {
+    res.status(400).json({ msg: error.message });
+  }
+};
 
 export const updateUsersById = async (req, res) => {
   try {

@@ -11,7 +11,6 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-
 export const getAllEventsForAdmin = async (req, res) => {
   try {
     const events = await Event.findAll({
@@ -32,9 +31,21 @@ export const getAllEventsForAdmin = async (req, res) => {
           model: Event_loc,
         },
       ],
-    });    
+    });
 
-    res.status(201).json(events);
+    const eventsWithoutProfiles = events.map((event) => {
+      const eventJSON = event.toJSON();
+      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+        // Jika Profiles ada, ambil yang pertama (asumsi satu user memiliki satu profile)
+        eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+      } else {
+        // Jika tidak ada Profiles, set menjadi objek kosong
+        eventJSON.user.Profiles = {};
+      }
+      return eventJSON;
+    });
+
+    res.status(201).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -43,10 +54,9 @@ export const getAllEventsForAdmin = async (req, res) => {
 
 
 
-
 export const getAllEventsForNonAdmin = async (req, res) => {
   try {
-    const response = await Event.findAll({
+    const events = await Event.findAll({
       include: [
         {
           model: User,
@@ -64,20 +74,31 @@ export const getAllEventsForNonAdmin = async (req, res) => {
           model: Event_loc,
         },
       ],
-      where: {
-        admin_validation: "Approved",
-      },
+      where:{
+        admin_validation: 'Approved'
+      }
     });
 
+    const eventsWithoutProfiles = events.map((event) => {
+      const eventJSON = event.toJSON();
+      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+        // Jika Profiles ada, ambil yang pertama (asumsi satu user memiliki satu profile)
+        eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+      } else {
+        // Jika tidak ada Profiles, set menjadi objek kosong
+        eventJSON.user.Profiles = {};
+      }
+      return eventJSON;
+    });
 
-    res.status(201).json(response);
+    res.status(201).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
 };
 
-export const getEventById = async (req, res) => {
+export const getEventByIdForAdmin = async (req, res) => {
   try {
     const event = await Event.findOne({
       where: {
@@ -116,8 +137,16 @@ export const getEventById = async (req, res) => {
       }
     );
 
-    // Dapatkan kembali acara setelah pembaruan
-    const updatedEvent = await Event.findOne({
+    res.status(200).json(event);
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+    console.log(error);
+  }
+};
+
+export const getEventByIdForNonAdmin = async (req, res) => {
+  try {
+    const event = await Event.findOne({
       where: {
         uuid: req.params.uuid,
         admin_validation: "Approved",
@@ -141,12 +170,27 @@ export const getEventById = async (req, res) => {
       ],
     });
 
-    res.status(200).json(updatedEvent);
+    if (!event) {
+      return res.status(404).json({ msg: "Event not found" });
+    }
+
+    // Update views
+    await Event.update(
+      { views: event.views + 1 },
+      {
+        where: {
+          uuid: req.params.uuid,
+        },
+      }
+    );
+
+    res.status(200).json(event);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
 };
+
 
 export const getEventForUser = async (req, res) => {
   const user = await User.findOne({
@@ -257,80 +301,88 @@ export const createEvent = async (req, res) => {
 };
 
 export const updateEvent = async (req, res) => {
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-  if (!event) {
-    res.status(404).json({ msg: "Event not found" });
-  }
-  let fileName = "";
-
-  if (req.files === null || req.files.inputFile === undefined) {
-    fileName = event.image;
-  } else {
-    const file = req.files.inputFile;
-    const fileSize = file.data.length;
-    const ext = path.extname(file.name);
-    fileName = file.md5 + ext;
-
-    const allowedType = [".png", ".jpg", ".jpeg"];
-
-    if (!allowedType.includes(ext.toLowerCase())) {
-      return res.status(422).json({ msg: "Invalid image" });
-    }
-
-    if (fileSize > 2000000) {
-      return res.status(422).json({ msg: "Images must be less than 2MB" });
-    }
-
-    const filepath = `../public/images/${event.image}`;
-
-    if (fs.existsSync(filepath)) {
-      try {
-        fs.unlinkSync(filepath);
-        console.log(`File ${filepath} successfully deleted`);
-      } catch (err) {
-        console.error(`Failed to delete file ${filepath}: ${err}`);
-      }
-    } else {
-      console.warn(`File ${filepath} not found`);
-    }
-
-    file.mv(`../public/images/${fileName}`, (err) => {
-      if (err) {
-        console.error(`Error moving file: ${err}`);
-        return res.status(500).json({ msg: "Error moving file" });
-      }
-    });
-
-    console.log("file:", file); // Cek apakah file terdeteksi
-    console.log("fileName:", fileName); // Cek apakah fileName sesuai
-
-    file.mv(`../public/images/${fileName}`, (err) => {
-      if (err) return res.status(500).json({ msg: err.message });
-    });
-  }
-  const {
-    title,
-    organizer,
-    type,
-    category,
-    price,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    type_location,
-    technical,
-    description,
-    language,
-  } = req.body;
-
-  const userRole = req.role;
-
   try {
+    const event = await Event.findOne({
+      where: {
+        uuid: req.params.uuid,
+      },
+    });
+
+    if (!event) {
+      res.status(404).json({ msg: "Event not found" });
+    }
+
+    let fileName = "";
+
+    if (req.files === null || req.files.inputFile === undefined) {
+      fileName = event.image;
+    } else {
+      const file = req.files.inputFile;
+      const fileSize = file.data.length;
+      const ext = path.extname(file.name);
+      fileName = file.md5 + ext;
+
+      const allowedType = [".png", ".jpg", ".jpeg"];
+
+      if (!allowedType.includes(ext.toLowerCase())) {
+        return res.status(422).json({ msg: "Invalid image" });
+      }
+
+      if (fileSize > 2000000) {
+        return res.status(422).json({ msg: "Images must be less than 2MB" });
+      }
+
+      const uploadPath = path.join(__dirname, '../public/images', fileName);
+
+      // Ensure the directory exists
+      if (!fs.existsSync(path.join(__dirname, '../public/images'))) {
+        fs.mkdirSync(path.join(__dirname, '../public/images'));
+      }
+
+      // Delete the existing file
+      const filepath = path.join(__dirname, '../public/images', event.image);
+      if (fs.existsSync(filepath)) {
+        try {
+          fs.unlinkSync(filepath);
+          console.log(`File ${filepath} successfully deleted`);
+        } catch (err) {
+          console.error(`Failed to delete file ${filepath}: ${err}`);
+        }
+      } else {
+        console.warn(`File ${filepath} not found`);
+      }
+
+      // Move the new file
+      file.mv(uploadPath, (err) => {
+        if (err) {
+          console.error(`Error moving file: ${err}`);
+          return res.status(500).json({ msg: "Error moving file" });
+        }
+        console.log(`File ${uploadPath} successfully moved`);
+      });
+
+      console.log("file:", file); // Check if the file is detected
+      console.log("fileName:", fileName); // Check if fileName is correct
+    }
+
+    const {
+      title,
+      organizer,
+      type,
+      category,
+      price,
+      start_date,
+      end_date,
+      start_time,
+      end_time,
+      type_location,
+      technical,
+      description,
+      language,
+    } = req.body;
+
+    const userRole = req.role;
+
     await Event.update(
       {
         userId: req.userId,
@@ -356,10 +408,10 @@ export const updateEvent = async (req, res) => {
         },
       }
     );
-    res.status(201).json("event has updated");
+    res.status(201).json("Event has been updated");
   } catch (error) {
     res.status(501).json({ msg: error.message });
-    console.log(error);
+    console.error(error);
   }
 };
 
