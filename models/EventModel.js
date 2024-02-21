@@ -92,7 +92,12 @@ const Event = db.define(
     url:{
         type: DataTypes.STRING,
         allowNull: false,
-    }
+    },
+    tags: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+    },
   },
   {
     freezeTableName: true,

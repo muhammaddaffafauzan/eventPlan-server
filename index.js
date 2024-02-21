@@ -26,15 +26,15 @@ try {
 //     await db.sync();
 // })()
 
-// app.use(cors({
-//   origin: 'http://localhost:5173',
-//   credentials: true,
-// }));
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
 
 app.use(express.json());
 app.use(fileUpload());
 app.use(express.static("public"));
-app.use(cors());
+// app.use(cors());
 app.use(UsersRoute);
 app.use(AuthRoute);
 app.use(EventRoute);

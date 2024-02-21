@@ -1,7 +1,6 @@
 import Followers from "../models/FollowersModel.js";
 import User from "../models/UsersModel.js";
 import Event from "../models/EventModel.js";
-import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Profile from "../models/ProfileModel.js";
 
@@ -99,9 +98,6 @@ export const getEventsByFollowedUsers = async (req, res) => {
         userId: followedUserIds,
       },
       include: [
-        {
-          model: Event_tags,
-        },
         {
           model: Event_loc,
         },

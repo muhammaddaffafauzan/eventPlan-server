@@ -1,5 +1,4 @@
 import Event from "../models/EventModel.js";
-import Event_tags from "../models/EventTagsModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
 import User from "../models/UsersModel.js";
@@ -23,9 +22,6 @@ export const getAllEventsForAdmin = async (req, res) => {
               model: Profile,
             },
           ],
-        },
-        {
-          model: Event_tags,
         },
         {
           model: Event_loc,
@@ -52,8 +48,6 @@ export const getAllEventsForAdmin = async (req, res) => {
   }
 };
 
-
-
 export const getAllEventsForNonAdmin = async (req, res) => {
   try {
     const events = await Event.findAll({
@@ -66,9 +60,6 @@ export const getAllEventsForNonAdmin = async (req, res) => {
               model: Profile,
             },
           ],
-        },
-        {
-          model: Event_tags,
         },
         {
           model: Event_loc,
@@ -115,9 +106,6 @@ export const getEventByIdForAdmin = async (req, res) => {
           ],
         },
         {
-          model: Event_tags,
-        },
-        {
           model: Event_loc,
         },
       ],
@@ -137,7 +125,16 @@ export const getEventByIdForAdmin = async (req, res) => {
       }
     );
 
-    res.status(200).json(event);
+    const eventJSON = event.toJSON();
+    if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+      // If Profiles exist, take the first one (assuming one user has one profile)
+      eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+    } else {
+      // If no Profiles, set it to an empty object
+      eventJSON.user.Profiles = {};
+    }
+
+    res.status(200).json(eventJSON);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -162,9 +159,6 @@ export const getEventByIdForNonAdmin = async (req, res) => {
           ],
         },
         {
-          model: Event_tags,
-        },
-        {
           model: Event_loc,
         },
       ],
@@ -184,13 +178,21 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       }
     );
 
-    res.status(200).json(event);
+    const eventJSON = event.toJSON();
+    if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+      // If Profiles exist, take the first one (assuming one user has one profile)
+      eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+    } else {
+      // If no Profiles, set it to an empty object
+      eventJSON.user.Profiles = {};
+    }
+
+    res.status(200).json(eventJSON);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
 };
-
 
 export const getEventForUser = async (req, res) => {
   const user = await User.findOne({
@@ -206,12 +208,6 @@ export const getEventForUser = async (req, res) => {
           userId: user.id,
         },
         include: [
-          {
-            model: Event_tags,
-          },
-          {
-            model: Event_loc,
-          },
           {
             model: Event_check,
           },
@@ -242,6 +238,7 @@ export const createEvent = async (req, res) => {
     technical,
     description,
     language,
+    tags
   } = req.body;
 
   const userRole = req.role;
@@ -287,13 +284,10 @@ export const createEvent = async (req, res) => {
       admin_validation: userRole === 'admin' ? "Approved" :  "Reviewed",
       image: fileName,
       url: url,
+      tags: tags,
     });
 
-    const tags = req.body.tags;
-
-    await createEventTags(newEvent.id, tags);
-
-    res.status(201).json({ msg: "Event and tags created successfully" });
+    res.status(201).json({ msg: "Event created successfully" });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error);
@@ -379,11 +373,13 @@ export const updateEvent = async (req, res) => {
       technical,
       description,
       language,
+      tags
     } = req.body;
+    const tagsArray = tags.split(',').map(tag => tag.trim());
 
     const userRole = req.role;
 
-    await Event.update(
+     await Event.update(
       {
         userId: req.userId,
         title: title,
@@ -401,6 +397,7 @@ export const updateEvent = async (req, res) => {
         language: language,
         image: fileName,
         url: `${req.protocol}://${req.get("host")}/images/${fileName}`,
+        tags: tagsArray,
       },
       {
         where: {
@@ -408,92 +405,12 @@ export const updateEvent = async (req, res) => {
         },
       }
     );
-    res.status(201).json("Event has been updated");
+    res.status(201).json({msg: `Event has been updated`});
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.error(error);
   }
 };
-
-export const addTagsForEvent = async (req, res) => {
-  const { uuid } = req.params;
-  const { tags } = req.body;
-
-  try {
-    const event = await Event.findOne({
-      where: { uuid },
-    });
-
-    if (!event) {
-      return res.status(404).json({ msg: "Event not found" });
-    }
-
-    await createEventTags(event.id, tags);
-
-    res.status(201).json({ msg: "Tags added to event successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: error.message });
-  }
-};
-
-
-const createEventTags = async (eventId, tags) => {
-  try {
-    // Convert the tags array to a JSON string
-    const tagsString = JSON.stringify(tags);
-
-    const newEventTags = await Event_tags.create({
-      eventId,
-      tags: tagsString,
-    });
-
-    // Parse the tags string back to an array
-    newEventTags.tags = JSON.parse(newEventTags.tags);
-
-    return newEventTags;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-
-
-
-export const deleteTagsForEvent = async (req, res) => {
-  const { uuid } = req.params;
-
-  try {
-    const event = await Event.findOne({
-      where: { uuid },
-    });
-
-    if (!event) {
-      return res.status(404).json({ msg: "Event not found" });
-    }
-
-    // Panggil fungsi deleteEventTags untuk menghapus tags dari event
-    await deleteEventTags(event.id);
-
-    res.status(200).json({ msg: "Tags deleted from event successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: error.message });
-  }
-};
-
-const deleteEventTags = async (eventId) => {
-  try {
-    await Event_tags.destroy({
-      where: { eventId },
-    });
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
 
 export const addLocationForEvent = async (req, res) => {
   const { city, state, country, address, lat, long } = req.body;
@@ -528,7 +445,6 @@ export const addLocationForEvent = async (req, res) => {
     res.status(500).json({ msg: error.message });
   }
 };
-
 
 export const addChecklistForEvent = async (req, res) => {
   const event = await Event.findOne({
@@ -642,7 +558,6 @@ export const deleteChecklistForEvent = async (req, res) => {
     res.status(500).json({ msg: error.message });
   }
 };
-
 
 export const deleteEvent = async (req, res) => {
   const event = await Event.findOne({

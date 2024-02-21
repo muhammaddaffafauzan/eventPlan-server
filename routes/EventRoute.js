@@ -15,8 +15,6 @@ import {
   updateEventValidation,
   eventFavorite,
   removeEventFromFavorites,
-  addTagsForEvent,
-  deleteTagsForEvent
 } from "../controllers/EventController.js";
 import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
 
@@ -27,8 +25,8 @@ router.get("/event/user", verifyUser, getEventForUser);
 router.get("/event/:uuid", getEventByIdForNonAdmin);
 router.get("/event/admin/:uuid", verifyUser, adminOnly, getEventByIdForAdmin);
 router.post("/event/create", verifyUser, createEvent);
-router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
 router.patch("/event/update/:uuid", verifyUser, updateEvent);
+router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
 router.delete("/event/delete/:uuid", verifyUser, deleteEvent);
 router.post("/event/validation/:uuid", verifyUser, adminOnly, updateEventValidation);
 router.post("/event/checklist/:uuid", verifyUser, addChecklistForEvent);
@@ -36,7 +34,5 @@ router.patch("/event/checklist/update/:uuid", verifyUser, updateChecklistForEven
 router.patch("/event/checklist/delete/:uuid", verifyUser, deleteChecklistForEvent);
 router.patch("/event/favorite", verifyUser, eventFavorite);
 router.patch("/event/favorite/delete", verifyUser, removeEventFromFavorites);
-router.post("/event/tags/:uuid", verifyUser, addTagsForEvent);
-router.delete("/event/tags/delete/:uuid", verifyUser, deleteTagsForEvent);
 
 export default router;
