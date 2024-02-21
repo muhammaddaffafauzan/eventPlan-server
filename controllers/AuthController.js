@@ -63,6 +63,56 @@ export const Login = async (req, res) => {
   }
 };
 
+export const registerUser = async (req, res) => {
+  const { username, email, password, confPassword } = req.body;
+
+  // Check if password and confirmation password match
+  if (password !== confPassword) {
+    return res.status(400).json({ msg: 'Password and confirmation password do not match' });
+  }
+
+  try {
+    // Check if the email is already registered
+    const existingUser = await User.findOne({
+      where: {
+        email: email,
+      },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ msg: 'Email is already registered' });
+    }
+
+    // Hash the password
+    const salt = await bcryptjs.genSalt();
+    const hashPassword = await bcryptjs.hash(password, salt);
+
+    // Create a new user
+    const newUser = await User.create({
+      username: username,
+      email: email,
+      password: hashPassword,
+      role: "user",
+    });
+
+    // Omit the password from the response
+    const newUserWithoutPassword = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      // Add other attributes as needed
+    };
+
+    res.status(201).json({
+      msg: "Register account successfully",
+      newUser: newUserWithoutPassword,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+};
+
 export const Me = async (req, res) => {
   try {
      // Get the token from the request headers
