@@ -2,7 +2,9 @@ import Event_category from '../models/EventCategoryModel.js';
 
 export const getAllEventCategories = async (req, res) => {
   try {
-    const eventCategories = await Event_category.findAll();
+    const eventCategories = await Event_category.findAll({
+     attributes: [ "id","category"]
+    });
     res.status(200).json(eventCategories);
   } catch (error) {
     res.status(500).json({ msg: error.message });
@@ -14,7 +16,7 @@ export const createEventCategory = async (req, res) => {
 
   try {
     const newEventCategory = await Event_category.create({ category });
-    res.status(201).json(newEventCategory);
+    res.status(201).json({msg: `category ${newEventCategory.category} has create.`});
   } catch (error) {
     res.status(500).json({ msg: error.message });
   }

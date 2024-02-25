@@ -57,6 +57,8 @@ export const createProfileForUser = async (req, res) => {
       country,
     } = req.body;
 
+    const userRole = req.role;
+
     if (req.files === null || req.files.inputFile === undefined)
       return res.status(400).json({ msg: "No File Uploaded" });
 
@@ -86,8 +88,8 @@ export const createProfileForUser = async (req, res) => {
       firstName,
       lastName,
       phone,
-      organize,
-      address,
+      organize: userRole === 'admin' ? "Official Eventplan" : organize,
+      address: userRole === 'admin' ? "Eventplan company" : address,
       city,
       state,
       country,
@@ -105,7 +107,7 @@ export const createProfileForUser = async (req, res) => {
   }
 };
 
-export const updateProfileUser = async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({
       where: {
@@ -116,7 +118,7 @@ export const updateProfileUser = async (req, res) => {
     if (!profile) {
       return res.status(404).json({ msg: "Data not found" });
     }
-
+    
     let fileName = "";
 
     if (req.files === null || req.files.inputFile === undefined) {
@@ -167,13 +169,15 @@ export const updateProfileUser = async (req, res) => {
       country,
     } = req.body;
 
+    const userRole = req.role;
+
     await Profile.update(
       {
         firstName,
         lastName,
         phone,
-        organize,
-        address,
+        organize: userRole === 'admin' ? "Official Eventplan" : organize,
+        address: userRole === 'admin' ? "Eventplan company" : address,
         city,
         state,
         country,
@@ -243,56 +247,3 @@ export const deleteProfileImage = async (req, res) => {
     res.status(500).json({ msg: error.message });
   }
 };
-
-export const createProfileForAdmin = async (req, res) => {
-  try {
-    const { userId, firstName, lastName, city, state, country } = req.body;
-
-    if (req.files === null || req.files.inputFile === undefined)
-      return res.status(400).json({ msg: "No File Uploaded" });
-
-    const file = req.files.inputFile;
-    const fileSize = file.data.length;
-    const ext = path.extname(file.name);
-    const fileName = file.md5 + ext;
-    const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
-    const allowedType = [".png", ".jpg", "jpeg"];
-
-    if (!allowedType.includes(ext.toLocaleLowerCase())) {
-      return res.status(422).json({ msg: "Invalid Image" });
-    }
-
-    if (fileSize > 2000000) {
-      return res.status(422).json({ msg: "Image must be less than 2MB" });
-    }
-
-    const imagePath = path.join(__dirname, "../public/images/", fileName);
-
-    file.mv(imagePath, async (err) => {
-      if (err) return res.status(500).json({ msg: err.message });
-    });
-
-    const newProfile = await Profile.create({
-      userId: req.userId,
-      firstName,
-      lastName,
-      phone: "",
-      organize: "Official profileplan",
-      address: "Eventplan company",
-      city,
-      state,
-      country,
-      image: fileName,
-      url: url,
-    });
-
-    res.status(201).json({
-      message: "Profile successfully created for admin",
-      profile: newProfile,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: error.message });
-  }
-};
-

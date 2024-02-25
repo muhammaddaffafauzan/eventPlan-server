@@ -1,6 +1,7 @@
 import Event from "../models/EventModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
+import Event_category from "../models/EventCategoryModel.js";
 import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
 import fs from "fs";
@@ -26,19 +27,52 @@ export const getAllEventsForAdmin = async (req, res) => {
         {
           model: Event_loc,
         },
+        {
+          model: Event_category,
+        },
       ],
     });
 
     const eventsWithoutProfiles = events.map((event) => {
       const eventJSON = event.toJSON();
       if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
-        // Jika Profiles ada, ambil yang pertama (asumsi satu user memiliki satu profile)
         eventJSON.user.Profiles = eventJSON.user.Profiles[0];
       } else {
-        // Jika tidak ada Profiles, set menjadi objek kosong
         eventJSON.user.Profiles = {};
       }
-      return eventJSON;
+
+      // Simpan nilai typeId dan categoryId di variabel
+      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+
+      // Buat objek baru dengan posisi typeId dan categoryId di atas
+      const modifiedEvent = {
+        id: eventJSON.id,
+        userId: eventJSON.userId,
+        uuid: eventJSON.uuid,
+        title: eventJSON.title,
+        organizer: eventJSON.organizer,
+        category: eventCategory,
+        price: eventJSON.price,
+        start_date: eventJSON.start_date,
+        end_date: eventJSON.end_date,
+        start_time: eventJSON.start_time,
+        end_time: eventJSON.end_time,
+        type_location: eventJSON.type_location,
+        technical: eventJSON.technical,
+        description: eventJSON.description,
+        language: eventJSON.language,
+        views: eventJSON.views,
+        admin_validation: eventJSON.admin_validation,
+        image: eventJSON.image,
+        url: eventJSON.url,
+        tags: eventJSON.tags,
+        createdAt: eventJSON.createdAt,
+        updatedAt: eventJSON.updatedAt,
+        user: eventJSON.user,
+        event_locations: eventJSON.event_locations,
+      };
+
+      return modifiedEvent;
     });
 
     res.status(201).json(eventsWithoutProfiles);
@@ -64,6 +98,9 @@ export const getAllEventsForNonAdmin = async (req, res) => {
         {
           model: Event_loc,
         },
+        {
+          model: Event_category,
+        },
       ],
       where:{
         admin_validation: 'Approved'
@@ -73,13 +110,43 @@ export const getAllEventsForNonAdmin = async (req, res) => {
     const eventsWithoutProfiles = events.map((event) => {
       const eventJSON = event.toJSON();
       if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
-        // Jika Profiles ada, ambil yang pertama (asumsi satu user memiliki satu profile)
         eventJSON.user.Profiles = eventJSON.user.Profiles[0];
       } else {
-        // Jika tidak ada Profiles, set menjadi objek kosong
         eventJSON.user.Profiles = {};
       }
-      return eventJSON;
+
+      // Simpan nilai typeId dan categoryId di variabel
+      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+
+      // Buat objek baru dengan posisi typeId dan categoryId di atas
+      const modifiedEvent = {
+        id: eventJSON.id,
+        userId: eventJSON.userId,
+        uuid: eventJSON.uuid,
+        title: eventJSON.title,
+        organizer: eventJSON.organizer,
+        category: eventCategory,
+        price: eventJSON.price,
+        start_date: eventJSON.start_date,
+        end_date: eventJSON.end_date,
+        start_time: eventJSON.start_time,
+        end_time: eventJSON.end_time,
+        type_location: eventJSON.type_location,
+        technical: eventJSON.technical,
+        description: eventJSON.description,
+        language: eventJSON.language,
+        views: eventJSON.views,
+        admin_validation: eventJSON.admin_validation,
+        image: eventJSON.image,
+        url: eventJSON.url,
+        tags: eventJSON.tags,
+        createdAt: eventJSON.createdAt,
+        updatedAt: eventJSON.updatedAt,
+        user: eventJSON.user,
+        event_locations: eventJSON.event_locations,
+      };
+
+      return modifiedEvent;
     });
 
     res.status(201).json(eventsWithoutProfiles);
@@ -108,6 +175,9 @@ export const getEventByIdForAdmin = async (req, res) => {
         {
           model: Event_loc,
         },
+        {
+          model: Event_category,
+        },
       ],
     });
 
@@ -127,14 +197,43 @@ export const getEventByIdForAdmin = async (req, res) => {
 
     const eventJSON = event.toJSON();
     if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
-      // If Profiles exist, take the first one (assuming one user has one profile)
       eventJSON.user.Profiles = eventJSON.user.Profiles[0];
     } else {
-      // If no Profiles, set it to an empty object
       eventJSON.user.Profiles = {};
     }
 
-    res.status(200).json(eventJSON);
+    // Simpan nilai typeId dan categoryId di variabel
+    const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+
+    // Buat objek baru dengan posisi typeId dan categoryId di atas
+    const modifiedEvent = {
+      id: eventJSON.id,
+      userId: eventJSON.userId,
+      uuid: eventJSON.uuid,
+      title: eventJSON.title,
+      organizer: eventJSON.organizer,
+      category: eventCategory,
+      price: eventJSON.price,
+      start_date: eventJSON.start_date,
+      end_date: eventJSON.end_date,
+      start_time: eventJSON.start_time,
+      end_time: eventJSON.end_time,
+      type_location: eventJSON.type_location,
+      technical: eventJSON.technical,
+      description: eventJSON.description,
+      language: eventJSON.language,
+      views: eventJSON.views,
+      admin_validation: eventJSON.admin_validation,
+      image: eventJSON.image,
+      url: eventJSON.url,
+      tags: eventJSON.tags,
+      createdAt: eventJSON.createdAt,
+      updatedAt: eventJSON.updatedAt,
+      user: eventJSON.user,
+      event_locations: eventJSON.event_locations,
+    };
+
+    res.status(200).json(modifiedEvent);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -161,6 +260,9 @@ export const getEventByIdForNonAdmin = async (req, res) => {
         {
           model: Event_loc,
         },
+        {
+          model: Event_category,
+        }
       ],
     });
 
@@ -177,17 +279,50 @@ export const getEventByIdForNonAdmin = async (req, res) => {
         },
       }
     );
+    const eventsWithoutProfiles = event.map((event) => {
+      const eventJSON = event.toJSON();
+      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+        eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+      } else {
+        eventJSON.user.Profiles = {};
+      }
 
-    const eventJSON = event.toJSON();
-    if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
-      // If Profiles exist, take the first one (assuming one user has one profile)
-      eventJSON.user.Profiles = eventJSON.user.Profiles[0];
-    } else {
-      // If no Profiles, set it to an empty object
-      eventJSON.user.Profiles = {};
-    }
+      // Simpan nilai typeId dan categoryId di variabel
+      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
 
-    res.status(200).json(eventJSON);
+      // Buat objek baru dengan posisi typeId dan categoryId di atas
+      const modifiedEvent = {
+        id: eventJSON.id,
+        userId: eventJSON.userId,
+        uuid: eventJSON.uuid,
+        title: eventJSON.title,
+        organizer: eventJSON.organizer,
+        category: eventCategory,
+        price: eventJSON.price,
+        start_date: eventJSON.start_date,
+        end_date: eventJSON.end_date,
+        start_time: eventJSON.start_time,
+        end_time: eventJSON.end_time,
+        type_location: eventJSON.type_location,
+        technical: eventJSON.technical,
+        description: eventJSON.description,
+        language: eventJSON.language,
+        views: eventJSON.views,
+        admin_validation: eventJSON.admin_validation,
+        image: eventJSON.image,
+        url: eventJSON.url,
+        tags: eventJSON.tags,
+        createdAt: eventJSON.createdAt,
+        updatedAt: eventJSON.updatedAt,
+        user: eventJSON.user,
+        event_locations: eventJSON.event_locations,
+      };
+
+      return modifiedEvent;
+    });
+
+
+    res.status(200).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -201,9 +336,9 @@ export const getEventForUser = async (req, res) => {
     },
   });
   try {
-    let response;
+    let event;
     if (req.role === "user") {
-      response = await Event.findAll({
+      event = await Event.findAll({
         where: {
           userId: user.id,
         },
@@ -211,9 +346,54 @@ export const getEventForUser = async (req, res) => {
           {
             model: Event_check,
           },
+          {
+            model: Event_category,
+          }
         ],
       });
-      res.status(200).json(response);
+      const eventsWithoutProfiles = event.map((event) => {
+        const eventJSON = event.toJSON();
+        if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+          eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+        } else {
+          eventJSON.user.Profiles = {};
+        }
+  
+        // Simpan nilai typeId dan categoryId di variabel
+        const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+  
+        // Buat objek baru dengan posisi typeId dan categoryId di atas
+        const modifiedEvent = {
+          id: eventJSON.id,
+          userId: eventJSON.userId,
+          uuid: eventJSON.uuid,
+          title: eventJSON.title,
+          organizer: eventJSON.organizer,
+          category: eventCategory,
+          price: eventJSON.price,
+          start_date: eventJSON.start_date,
+          end_date: eventJSON.end_date,
+          start_time: eventJSON.start_time,
+          end_time: eventJSON.end_time,
+          type_location: eventJSON.type_location,
+          technical: eventJSON.technical,
+          description: eventJSON.description,
+          language: eventJSON.language,
+          views: eventJSON.views,
+          admin_validation: eventJSON.admin_validation,
+          image: eventJSON.image,
+          url: eventJSON.url,
+          tags: eventJSON.tags,
+          createdAt: eventJSON.createdAt,
+          updatedAt: eventJSON.updatedAt,
+          user: eventJSON.user,
+          event_locations: eventJSON.event_locations,
+        };
+  
+        return modifiedEvent;
+      });
+  
+      res.status(201).json(eventsWithoutProfiles);
     } else {
       res.status(403).json({ msg: "Access for users only" });
     }
@@ -227,8 +407,7 @@ export const createEvent = async (req, res) => {
   const {
     title,
     organizer,
-    type,
-    category,
+    categoryId,
     price,
     start_date,
     end_date,
@@ -270,8 +449,7 @@ export const createEvent = async (req, res) => {
       userId: req.userId,
       title: title,
       organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
-      type: type,
-      category: category,
+      categoryId: categoryId,
       price: price,
       start_date: start_date,
       end_date: end_date,
@@ -287,7 +465,7 @@ export const createEvent = async (req, res) => {
       tags: tags,
     });
 
-    res.status(201).json({ msg: "Event created successfully" });
+    res.status(201).json({ msg: `Event ${newEvent.title} created successfully` });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error);
@@ -362,8 +540,7 @@ export const updateEvent = async (req, res) => {
     const {
       title,
       organizer,
-      type,
-      category,
+      categoryId,
       price,
       start_date,
       end_date,
@@ -384,8 +561,7 @@ export const updateEvent = async (req, res) => {
         userId: req.userId,
         title: title,
         organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
-        type: type,
-        category: category,
+        categoryId: categoryId,
         price: price,
         start_date: start_date,
         end_date: end_date,
@@ -423,26 +599,46 @@ export const addLocationForEvent = async (req, res) => {
     });
 
     if (!event) {
-      res.status(404).json({ msg: "Event not found" });
+      return res.status(404).json({ msg: "Event not found" });
     }
 
-    const newLocation = await Event_loc.create({
-      eventId: event.id,
-      city,
-      state,
-      country,
-      address,
-      lat,
-      long,
+    // Temukan atau buat lokasi untuk event
+    const [location, created] = await Event_loc.findOrCreate({
+      where: { eventId: event.id },
+      defaults: {
+        city,
+        state,
+        country,
+        address,
+        lat,
+        long,
+      },
     });
 
-    res.status(201).json({
-      message: "Location added for event",
-      location: newLocation,
-    });
+    if (!created) {
+      // If location already exists, update it
+      await location.update({
+        city,
+        state,
+        country,
+        address,
+        lat,
+        long,
+      });
+
+      return res.status(200).json({
+        message: "Location updated for event",
+        location,
+      });
+    } else {
+      return res.status(201).json({
+        message: "Location added for event",
+        location,
+      });
+    }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: error.message });
+    return res.status(500).json({ msg: error.message });
   }
 };
 

@@ -3,19 +3,17 @@ import {
   getAllProfileUsers,
   getProfileUsersByUuid,
   createProfileForUser,
-  updateProfileUser,
+  updateProfile,
   deleteProfileImage,
-  createProfileForAdmin,
 } from '../controllers/ProfileController.js';
-import { verifyUser, adminOnly } from '../middleware/AuthUser.js';
+import { verifyUser } from '../middleware/AuthUser.js';
 
 const router = express.Router();
 
 router.get('/profiles', getAllProfileUsers);
 router.get('/profile/:uuid', getProfileUsersByUuid);
-router.post('/profile/users/create', verifyUser, createProfileForUser);
-router.patch('/profile/update', verifyUser, updateProfileUser);
+router.post('/profile/create', verifyUser, createProfileForUser);
+router.patch('/profile/update', verifyUser, updateProfile);
 router.delete("/profile/image/delete", verifyUser, deleteProfileImage);
-router.post("/profile/admin/create", verifyUser, adminOnly, createProfileForAdmin);
 
 export default router;

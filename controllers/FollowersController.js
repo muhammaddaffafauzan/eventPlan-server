@@ -3,6 +3,7 @@ import User from "../models/UsersModel.js";
 import Event from "../models/EventModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Profile from "../models/ProfileModel.js";
+import Event_category from "../models/EventCategoryModel.js";
 
 export const followUser = async (req, res) => {
   try {
@@ -100,6 +101,10 @@ export const getEventsByFollowedUsers = async (req, res) => {
       include: [
         {
           model: Event_loc,
+        },
+        {
+          model: Event_category, // Include the Event_category model
+          attributes: ['category'], // Include only the category attribute
         },
       ],
     });

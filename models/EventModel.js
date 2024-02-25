@@ -2,6 +2,7 @@ import { Sequelize } from "sequelize";
 import db from "../config/Database.js";
 import User from "./UsersModel.js";
 import Profile from "./ProfileModel.js";
+import Event_category from "./EventCategoryModel.js";
 
 const { DataTypes } = Sequelize;
 
@@ -31,18 +32,17 @@ const Event = db.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    type: {
-      type: DataTypes.STRING,
+    categoryId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-    },
-    category: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
     price: {
       type: DataTypes.FLOAT,
       allowNull: false,
-      defaultValue: 0.0
+      defaultValue: 0.0,
     },
     start_date: {
       type: DataTypes.DATEONLY,
@@ -82,16 +82,16 @@ const Event = db.define(
       allowNull: false,
     },
     admin_validation: {
-      type: DataTypes.ENUM('Reviewed', 'Approved', 'Denied'),
+      type: DataTypes.ENUM("Reviewed", "Approved", "Denied"),
       allowNull: true,
     },
-    image:{
+    image: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    url:{
-        type: DataTypes.STRING,
-        allowNull: false,
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     tags: {
       type: DataTypes.JSON,
@@ -104,8 +104,9 @@ const Event = db.define(
   }
 );
 
-User.hasOne(Profile);
+User.hasOne(Profile); 
 User.hasMany(Event);
 Event.belongsTo(User, { foreignKey: "userId" });
+Event.belongsTo(Event_category, { foreignKey: "categoryId" });
 
 export default Event;

@@ -4,12 +4,12 @@ import db from "../config/Database.js";
 const { DataTypes } = Sequelize;
 
 const Event_category = db.define(
-  "event_category",
+  "Event_Category",
   {
-    category:{
-        type: DataTypes.STRING,
-        allowNull: false
-    }
+    category: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     freezeTableName: true,
