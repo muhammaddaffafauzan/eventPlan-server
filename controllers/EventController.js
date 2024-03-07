@@ -6,8 +6,8 @@ import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -17,7 +17,7 @@ export const getAllEventsForAdmin = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          attributes: ["id", "uuid", "username", "email", "role"],
           include: [
             {
               model: Profile,
@@ -35,14 +35,20 @@ export const getAllEventsForAdmin = async (req, res) => {
 
     const eventsWithoutProfiles = events.map((event) => {
       const eventJSON = event.toJSON();
-      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+      if (
+        eventJSON.user &&
+        eventJSON.user.Profiles &&
+        eventJSON.user.Profiles.length > 0
+      ) {
         eventJSON.user.Profiles = eventJSON.user.Profiles[0];
       } else {
         eventJSON.user.Profiles = {};
       }
 
       // Simpan nilai typeId dan categoryId di variabel
-      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+      const eventCategory = eventJSON.Event_Category
+        ? eventJSON.Event_Category.category
+        : null;
 
       // Buat objek baru dengan posisi typeId dan categoryId di atas
       const modifiedEvent = {
@@ -88,7 +94,7 @@ export const getAllEventsForNonAdmin = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          attributes: ["id", "uuid", "username", "email", "role"],
           include: [
             {
               model: Profile,
@@ -102,21 +108,27 @@ export const getAllEventsForNonAdmin = async (req, res) => {
           model: Event_category,
         },
       ],
-      where:{
-        admin_validation: 'Approved'
-      }
+      where: {
+        admin_validation: "Approved",
+      },
     });
 
     const eventsWithoutProfiles = events.map((event) => {
       const eventJSON = event.toJSON();
-      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+      if (
+        eventJSON.user &&
+        eventJSON.user.Profiles &&
+        eventJSON.user.Profiles.length > 0
+      ) {
         eventJSON.user.Profiles = eventJSON.user.Profiles[0];
       } else {
         eventJSON.user.Profiles = {};
       }
 
       // Simpan nilai typeId dan categoryId di variabel
-      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+      const eventCategory = eventJSON.Event_Category
+        ? eventJSON.Event_Category.category
+        : null;
 
       // Buat objek baru dengan posisi typeId dan categoryId di atas
       const modifiedEvent = {
@@ -165,7 +177,7 @@ export const getEventByIdForAdmin = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          attributes: ["id", "uuid", "username", "email", "role"],
           include: [
             {
               model: Profile,
@@ -196,14 +208,20 @@ export const getEventByIdForAdmin = async (req, res) => {
     );
 
     const eventJSON = event.toJSON();
-    if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+    if (
+      eventJSON.user &&
+      eventJSON.user.Profiles &&
+      eventJSON.user.Profiles.length > 0
+    ) {
       eventJSON.user.Profiles = eventJSON.user.Profiles[0];
     } else {
       eventJSON.user.Profiles = {};
     }
 
     // Simpan nilai typeId dan categoryId di variabel
-    const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+    const eventCategory = eventJSON.Event_Category
+      ? eventJSON.Event_Category.category
+      : null;
 
     // Buat objek baru dengan posisi typeId dan categoryId di atas
     const modifiedEvent = {
@@ -250,7 +268,7 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'uuid', 'username', 'email', 'role'],
+          attributes: ["id", "uuid", "username", "email", "role"],
           include: [
             {
               model: Profile,
@@ -262,7 +280,7 @@ export const getEventByIdForNonAdmin = async (req, res) => {
         },
         {
           model: Event_category,
-        }
+        },
       ],
     });
 
@@ -281,14 +299,20 @@ export const getEventByIdForNonAdmin = async (req, res) => {
     );
     const eventsWithoutProfiles = event.map((event) => {
       const eventJSON = event.toJSON();
-      if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+      if (
+        eventJSON.user &&
+        eventJSON.user.Profiles &&
+        eventJSON.user.Profiles.length > 0
+      ) {
         eventJSON.user.Profiles = eventJSON.user.Profiles[0];
       } else {
         eventJSON.user.Profiles = {};
       }
 
       // Simpan nilai typeId dan categoryId di variabel
-      const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
+      const eventCategory = eventJSON.Event_Category
+        ? eventJSON.Event_Category.category
+        : null;
 
       // Buat objek baru dengan posisi typeId dan categoryId di atas
       const modifiedEvent = {
@@ -321,7 +345,6 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       return modifiedEvent;
     });
 
-
     res.status(200).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
@@ -348,20 +371,26 @@ export const getEventForUser = async (req, res) => {
           },
           {
             model: Event_category,
-          }
+          },
         ],
       });
       const eventsWithoutProfiles = event.map((event) => {
         const eventJSON = event.toJSON();
-        if (eventJSON.user && eventJSON.user.Profiles && eventJSON.user.Profiles.length > 0) {
+        if (
+          eventJSON.user &&
+          eventJSON.user.Profiles &&
+          eventJSON.user.Profiles.length > 0
+        ) {
           eventJSON.user.Profiles = eventJSON.user.Profiles[0];
         } else {
           eventJSON.user.Profiles = {};
         }
-  
+
         // Simpan nilai typeId dan categoryId di variabel
-        const eventCategory = eventJSON.Event_Category ? eventJSON.Event_Category.category : null;
-  
+        const eventCategory = eventJSON.Event_Category
+          ? eventJSON.Event_Category.category
+          : null;
+
         // Buat objek baru dengan posisi typeId dan categoryId di atas
         const modifiedEvent = {
           id: eventJSON.id,
@@ -389,10 +418,10 @@ export const getEventForUser = async (req, res) => {
           user: eventJSON.user,
           event_locations: eventJSON.event_locations,
         };
-  
+
         return modifiedEvent;
       });
-  
+
       res.status(201).json(eventsWithoutProfiles);
     } else {
       res.status(403).json({ msg: "Access for users only" });
@@ -404,21 +433,27 @@ export const getEventForUser = async (req, res) => {
 };
 
 export const createEvent = async (req, res) => {
-  const {
-    title,
-    organizer,
-    categoryId,
-    price,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    type_location,
-    technical,
-    description,
-    language,
-    tags
-  } = req.body;
+ const {
+   title,
+   organizer,
+   categoryId,
+   price,
+   start_date,
+   end_date,
+   start_time,
+   end_time,
+   type_location,
+   technical,
+   description,
+   language,
+   tags,
+   city,
+   state,
+   country,
+   address,
+   lat,
+   long,
+ } = req.body;
 
   const userRole = req.role;
 
@@ -437,18 +472,18 @@ export const createEvent = async (req, res) => {
   if (fileSize > 2000000)
     return res.status(422).json({ msg: "Image must be less than 2MB" });
 
-  const imagePath = path.join(__dirname, '../public/images/', fileName);
+  const imagePath = path.join(__dirname, "../public/images/", fileName);
 
   file.mv(imagePath, async (err) => {
     if (err) return res.status(500).json({ msg: err.message });
   });
 
   try {
-    // Buat event tanpa menyertakan tag terlebih dahulu
+    // Create event without including tags initially
     const newEvent = await Event.create({
       userId: req.userId,
       title: title,
-      organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
+      organizer: userRole === "admin" ? "Official Eventplan" : organizer,
       categoryId: categoryId,
       price: price,
       start_date: start_date,
@@ -459,16 +494,72 @@ export const createEvent = async (req, res) => {
       technical: technical,
       description: description,
       language: language,
-      admin_validation: userRole === 'admin' ? "Approved" :  "Reviewed",
+      admin_validation: userRole === "admin" ? "Approved" : "Reviewed",
       image: fileName,
       url: url,
       tags: tags,
     });
 
-    res.status(201).json({ msg: `Event ${newEvent.title} created successfully` });
+    // If the user is an admin, add the location for the event
+    if (userRole === "admin") {
+      // Wrap req.body with a variable
+      const locationPayload = {
+        city,
+        state,
+        country,
+        address,
+        lat,
+        long,
+      };
+
+      // Call the addLocationForEvent function
+      await addLocationForEventInternal(newEvent.uuid, locationPayload);
+    } else {
+      // If the user is not an admin, you can customize the response here
+      return res
+        .status(403)
+        .json({ msg: "Access forbidden. Only admin can perform this action." });
+    }
+
+    res
+      .status(201)
+      .json({ msg: `Event ${newEvent.title} created successfully` });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.log(error);
+  }
+};
+
+const addLocationForEventInternal = async (eventUuid, locationPayload) => {
+  try {
+    // Find the event based on uuid
+    const event = await Event.findOne({
+      where: {
+        uuid: eventUuid,
+      },
+    });
+
+    if (!event) {
+      console.error("Event not found");
+      return;
+    }
+
+    // Find or create location for the event
+    const [location, created] = await Event_loc.findOrCreate({
+      where: { eventId: event.id },
+      defaults: locationPayload,
+    });
+
+    if (!created) {
+      // If location already exists, update it
+      await location.update(locationPayload);
+
+      console.log("Location updated for event");
+    } else {
+      console.log("Location added for event");
+    }
+  } catch (error) {
+    console.error(error);
   }
 };
 
@@ -504,15 +595,15 @@ export const updateEvent = async (req, res) => {
         return res.status(422).json({ msg: "Images must be less than 2MB" });
       }
 
-      const uploadPath = path.join(__dirname, '../public/images', fileName);
+      const uploadPath = path.join(__dirname, "../public/images", fileName);
 
       // Ensure the directory exists
-      if (!fs.existsSync(path.join(__dirname, '../public/images'))) {
-        fs.mkdirSync(path.join(__dirname, '../public/images'));
+      if (!fs.existsSync(path.join(__dirname, "../public/images"))) {
+        fs.mkdirSync(path.join(__dirname, "../public/images"));
       }
 
       // Delete the existing file
-      const filepath = path.join(__dirname, '../public/images', event.image);
+      const filepath = path.join(__dirname, "../public/images", event.image);
       if (fs.existsSync(filepath)) {
         try {
           fs.unlinkSync(filepath);
@@ -550,17 +641,17 @@ export const updateEvent = async (req, res) => {
       technical,
       description,
       language,
-      tags
+      tags,
     } = req.body;
-    const tagsArray = tags.split(',').map(tag => tag.trim());
+    const tagsArray = tags.split(",").map((tag) => tag.trim());
 
     const userRole = req.role;
 
-     await Event.update(
+    await Event.update(
       {
         userId: req.userId,
         title: title,
-        organizer: userRole === 'admin' ? "Official Eventplan" : organizer,
+        organizer: userRole === "admin" ? "Official Eventplan" : organizer,
         categoryId: categoryId,
         price: price,
         start_date: start_date,
@@ -581,7 +672,7 @@ export const updateEvent = async (req, res) => {
         },
       }
     );
-    res.status(201).json({msg: `Event has been updated`});
+    res.status(201).json({ msg: `Event has been updated` });
   } catch (error) {
     res.status(501).json({ msg: error.message });
     console.error(error);
@@ -791,11 +882,9 @@ export const updateEventValidation = async (req, res) => {
   try {
     // Pastikan pengguna yang memanggil fungsi memiliki role "admin"
     if (req.role !== "admin") {
-      return res
-        .status(403)
-        .json({
-          msg: "Access forbidden. Only admin can update validation status.",
-        });
+      return res.status(403).json({
+        msg: "Access forbidden. Only admin can update validation status.",
+      });
     }
 
     // Temukan event berdasarkan uuid
