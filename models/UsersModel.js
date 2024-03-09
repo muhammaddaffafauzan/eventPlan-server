@@ -47,6 +47,13 @@ const User = db.define(
     refreshToken: {
       type: DataTypes.STRING,
     },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    verificationToken: {
+      type: DataTypes.STRING,
+    },
   },
   {
     freezeTableName: true,

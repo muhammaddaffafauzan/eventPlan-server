@@ -433,102 +433,110 @@ export const getEventForUser = async (req, res) => {
 };
 
 export const createEvent = async (req, res) => {
- const {
-   title,
-   organizer,
-   categoryId,
-   price,
-   start_date,
-   end_date,
-   start_time,
-   end_time,
-   type_location,
-   technical,
-   description,
-   language,
-   tags,
-   city,
-   state,
-   country,
-   address,
-   lat,
-   long,
- } = req.body;
+  const {
+    title,
+    organizer,
+    categoryId,
+    price,
+    start_date,
+    end_date,
+    start_time,
+    end_time,
+    type_location,
+    technical,
+    description,
+    language,
+    tags,
+    city,
+    state,
+    country,
+    address,
+    lat,
+    long,
+  } = req.body;
 
   const userRole = req.role;
 
-  if (req.files === null)
+  // Check if req.files is undefined or req.files.inputFile is undefined
+  if (!req.files || !req.files.inputFile) {
     return res.status(400).json({ msg: "No File Uploaded" });
+  }
 
   const file = req.files.inputFile;
   const fileSize = file.data.length;
   const ext = path.extname(file.name);
   const fileName = file.md5 + ext;
   const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
-  const allowedType = [".png", ".jpg", "jpeg"];
+  const allowedType = [".png", ".jpg", ".jpeg"];
 
-  if (!allowedType.includes(ext.toLocaleLowerCase()))
+  if (!allowedType.includes(ext.toLocaleLowerCase())) {
     return res.status(422).json({ msg: "Invalid Image" });
-  if (fileSize > 2000000)
+  }
+
+  if (fileSize > 2000000) {
     return res.status(422).json({ msg: "Image must be less than 2MB" });
+  }
 
   const imagePath = path.join(__dirname, "../public/images/", fileName);
 
   file.mv(imagePath, async (err) => {
     if (err) return res.status(500).json({ msg: err.message });
-  });
 
-  try {
-    // Create event without including tags initially
-    const newEvent = await Event.create({
-      userId: req.userId,
-      title: title,
-      organizer: userRole === "admin" ? "Official Eventplan" : organizer,
-      categoryId: categoryId,
-      price: price,
-      start_date: start_date,
-      end_date: end_date,
-      start_time: start_time,
-      end_time: end_time,
-      type_location: type_location,
-      technical: technical,
-      description: description,
-      language: language,
-      admin_validation: userRole === "admin" ? "Approved" : "Reviewed",
-      image: fileName,
-      url: url,
-      tags: tags,
-    });
+    const tagsArray = tags.split(",").map((tag) => tag.trim());
 
-    // If the user is an admin, add the location for the event
-    if (userRole === "admin") {
-      // Wrap req.body with a variable
-      const locationPayload = {
-        city,
-        state,
-        country,
-        address,
-        lat,
-        long,
-      };
+    try {
+      // Create event without including tags initially
+      const newEvent = await Event.create({
+        userId: req.userId,
+        title: title,
+        organizer: userRole === "admin" ? "Official Eventplan" : organizer,
+        categoryId: categoryId,
+        price: price,
+        start_date: start_date,
+        end_date: end_date,
+        start_time: start_time,
+        end_time: end_time,
+        type_location: type_location,
+        technical: technical,
+        description: description,
+        language: language,
+        admin_validation: userRole === "admin" ? "Approved" : "Reviewed",
+        image: fileName,
+        url: url,
+        tags: tagsArray,
+      });
 
-      // Call the addLocationForEvent function
-      await addLocationForEventInternal(newEvent.uuid, locationPayload);
-    } else {
-      // If the user is not an admin, you can customize the response here
-      return res
-        .status(403)
-        .json({ msg: "Access forbidden. Only admin can perform this action." });
+      // If the user is an admin, add the location for the event
+      if (userRole === "admin") {
+        // Wrap req.body with a variable
+        const locationPayload = {
+          city,
+          state,
+          country,
+          address,
+          lat,
+          long,
+        };
+
+        // Call the addLocationForEvent function
+        await addLocationForEventInternal(newEvent.uuid, locationPayload);
+      } else {
+        // If the user is not an admin, you can customize the response here
+        return res.status(403).json({
+          msg: "Access forbidden. Only admin can perform this action.",
+        });
+      }
+
+      res
+        .status(201)
+        .json({ msg: `Event ${newEvent.title} created successfully` });
+    } catch (error) {
+      res.status(501).json({ msg: error.message });
+      console.log(error);
     }
-
-    res
-      .status(201)
-      .json({ msg: `Event ${newEvent.title} created successfully` });
-  } catch (error) {
-    res.status(501).json({ msg: error.message });
-    console.log(error);
-  }
+  });
 };
+
 
 const addLocationForEventInternal = async (eventUuid, locationPayload) => {
   try {
@@ -852,28 +860,43 @@ export const deleteEvent = async (req, res) => {
       uuid: req.params.uuid,
     },
   });
+
   if (!event) {
-    res.status(404).json({ msg: "Event not found" });
+    return res.status(404).json({ msg: "Event not found" });
   }
 
-  if (!event.image) {
-    return res.status(404).json({ msg: "Image not found" });
-  }
-
-  // Hapus file gambar dari direktori
+  // Bangun jalur file gambar
   const imagePath = path.join(__dirname, `../public/images/${event.image}`);
-  fs.unlinkSync(imagePath);
 
   try {
-    await Event.destroy({
-      where: {
-        id: event.id,
-      },
-    });
-    res.status(201).json("event succes has delete");
+    // Hapus file gambar dari direktori jika ada
+    if (fs.existsSync(imagePath) || !event.image) {
+      fs.unlinkSync(imagePath); // Hapus file gambar
+
+      // Hapus event dari database
+      await Event.destroy({
+        where: {
+          id: event.id,
+        },
+      });
+
+      return res
+        .status(201)
+        .json({ msg: `Event ${event.title} successfully deleted` });
+    } else {
+      // File tidak ditemukan, tetapi lanjutkan penghapusan event dari database
+      await Event.destroy({
+        where: {
+          id: event.id,
+        },
+      });
+
+      return res
+        .status(201)
+        .json({ msg: `Event ${event.title} successfully deleted` });
+    }
   } catch (error) {
-    res.status(501).json({ msg: error.message });
-    console.log(error);
+    return res.status(501).json({ msg: error.message });
   }
 };
 

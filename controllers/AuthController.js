@@ -1,8 +1,8 @@
 import User from "../models/UsersModel.js";
-import Profile from "../models/ProfileModel.js";
-import Followers from "../models/FollowersModel.js";
-import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import bcryptjs from "bcryptjs";
+import { Op } from "sequelize";
+import nodemailer from "nodemailer";
 
 // Fungsi untuk menghasilkan token akses dan refresh token
 const generateTokens = (user) => {
@@ -34,25 +34,38 @@ const generateTokens = (user) => {
   return { accessToken, refreshToken };
 };
 
-
 export const Login = async (req, res) => {
   try {
+    const { identifier, password } = req.body;
+
+    // Find user based on email or username
     const user = await User.findOne({
       where: {
-        email: req.body.email,
+        [Op.or]: [{ email: identifier }, { username: identifier }],
       },
     });
 
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    const match = await bcryptjs.compare(req.body.password, user.password);
+    const match = await bcryptjs.compare(password, user.password);
 
-    if (!match) return res.status(400).json({ msg: "Password wrong" });
+    if (!match) {
+      return res.status(400).json({ msg: "Password wrong" });
+    }
 
-    // Jika otentikasi berhasil, buat token akses dan refresh token
+    if (!user.isVerified) {
+      return res.status(401).json({
+        msg: "User not verified. Check your email for verification instructions.",
+      });
+    }
+
+    // If authentication is successful, generate access and refresh tokens
     const { accessToken, refreshToken } = generateTokens(user);
     const role = user.role;
-    // Simpan refresh token di database
+
+    // Save the refresh token in the database
     user.refreshToken = refreshToken;
     await user.save();
 
@@ -63,16 +76,56 @@ export const Login = async (req, res) => {
   }
 };
 
+const sendVerificationEmail = async (email, verificationCode) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: "Welcome to EventPlan! Verify Your Email",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
+            <img src='https://i.postimg.cc/zVskvwHM/eventplan-logo.png' alt='EventPlan Logo' style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;">
+          <h2 style="color: #333; text-align: center;">Welcome to EventPlan</h2>
+          <p style="color: #555; font-size: 16px;">Thank you for choosing EventPlan! To get started, please verify your email address:</p>
+          <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 15px;">
+            <h3 style="color: #333; text-align: center; font-size: 24px;">${verificationCode}</h3>
+          </div>
+          <p style="color: #555; font-size: 16px; text-align: center; margin-top: 15px;">This code will expire in a limited time.</p>
+          <p style="color: #555; font-size: 16px; text-align: center;">Thank you for choosing EventPlan!</p>
+        </div>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 export const registerUser = async (req, res) => {
   const { username, email, password, confPassword } = req.body;
 
-  // Check if password and confirmation password match
   if (password !== confPassword) {
-    return res.status(400).json({ msg: 'Password and confirmation password do not match' });
+    return res
+      .status(400)
+      .json({ msg: "Password and confirmation password do not match" });
   }
 
   try {
-    // Check if the email is already registered
     const existingUser = await User.findOne({
       where: {
         email: email,
@@ -80,14 +133,12 @@ export const registerUser = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ msg: 'Email is already registered' });
+      return res.status(400).json({ msg: "Email is already registered" });
     }
 
-    // Hash the password
     const salt = await bcryptjs.genSalt();
     const hashPassword = await bcryptjs.hash(password, salt);
 
-    // Create a new user
     const newUser = await User.create({
       username: username,
       email: email,
@@ -95,38 +146,110 @@ export const registerUser = async (req, res) => {
       role: "user",
     });
 
-    // Omit the password from the response
+    const verificationCode = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
+    newUser.verificationCode = verificationCode;
+    await newUser.save();
+
+    await sendVerificationEmail(newUser.email, verificationCode);
+
     const newUserWithoutPassword = {
       id: newUser.id,
       username: newUser.username,
       email: newUser.email,
       role: newUser.role,
-      // Add other attributes as needed
     };
 
     res.status(201).json({
-      msg: "Register account successfully",
+      msg: "Register account successfully. Check your email for verification instructions.",
       newUser: newUserWithoutPassword,
     });
   } catch (error) {
+    // Cek apakah error disebabkan oleh kesalahan pengiriman email
+    if (error.message.includes("Error sending email")) {
+      return res.status(500).json({ msg: "Error sending verification email" });
+    }
+
     res.status(500).json({ msg: error.message });
+  }
+};
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, verificationToken } = req.body;
+
+    const user = await User.findOne({
+      where: {
+        email: email,
+        verificationToken: verificationToken,
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ msg: "Invalid verification code" });
+    }
+
+    // Setel status verifikasi dan hapus kode verifikasi
+    user.isVerified = true;
+    user.verificationCode = null;
+    await user.save();
+
+    res.status(200).json({ msg: "Email verification successful" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const resendVerificationCode = async (req, res) => {
+  try {
+    // Ambil data pengguna berdasarkan alamat email
+    const user = await User.findOne({
+      where: {
+        email: req.body.email,
+      },
+    });
+
+    // Cek apakah pengguna ditemukan
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Cek apakah pengguna sudah terverifikasi
+    if (user.isVerified) {
+      return res.status(400).json({ msg: "User already verified" });
+    }
+
+    // Generate kode verifikasi baru
+    const newVerificationCode = Math.floor(100000 + Math.random() * 900000);
+
+    // Simpan kode verifikasi baru ke dalam database
+    user.verificationToken = newVerificationCode;
+    await user.save();
+
+    // Kirim email verifikasi baru
+    await sendVerificationEmail(user.email, newVerificationCode, req);
+
+    res.json({ msg: "Verification code resent successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
   }
 };
 
 export const Me = async (req, res) => {
   try {
-     // Get the token from the request headers
-     const token = req.headers.authorization.split(' ')[1];
+    // Get the token from the request headers
+    const token = req.headers.authorization.split(" ")[1];
 
-     // Verify the token
-     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
- 
-     // Check if the token is still valid
-     const currentTime = new Date().getTime();
-     if (decodedToken.exp * 1000 < currentTime) {
-       return res.status(403).json({ msg: "Token expired" });
-     }
- 
+    // Verify the token
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if the token is still valid
+    const currentTime = new Date().getTime();
+    if (decodedToken.exp * 1000 < currentTime) {
+      return res.status(403).json({ msg: "Token expired" });
+    }
+
     const user = await User.findOne({
       where: {
         id: req.userId,
@@ -171,4 +294,3 @@ export const Me = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
-
