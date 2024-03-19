@@ -1,4 +1,6 @@
 import User from "../models/UsersModel.js";
+import Profile from "../models/ProfileModel.js";
+import Followers from "../models/FollowersModel.js";
 import jwt from "jsonwebtoken";
 import bcryptjs from "bcryptjs";
 import { Op } from "sequelize";
@@ -119,26 +121,30 @@ const sendVerificationEmail = async (email, verificationCode) => {
 export const registerUser = async (req, res) => {
   const { username, email, password, confPassword } = req.body;
 
+  // Validasi password
   if (password !== confPassword) {
     return res
       .status(400)
       .json({ msg: "Password and confirmation password do not match" });
   }
+  // Validasi email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ msg: "Invalid email format" });
+  }
 
   try {
-    const existingUser = await User.findOne({
-      where: {
-        email: email,
-      },
-    });
-
+    // Cek apakah email telah digunakan
+    const existingUser = await User.findOne({ where: { email: email } });
     if (existingUser) {
       return res.status(400).json({ msg: "Email is already registered" });
     }
 
+    // Hash password
     const salt = await bcryptjs.genSalt();
     const hashPassword = await bcryptjs.hash(password, salt);
 
+    // Buat pengguna baru
     const newUser = await User.create({
       username: username,
       email: email,
@@ -146,12 +152,15 @@ export const registerUser = async (req, res) => {
       role: "user",
     });
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
-    newUser.verificationCode = verificationCode;
+    // Buat token verifikasi
+    const verificationToken = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
+    newUser.verificationToken = verificationToken;
     await newUser.save();
 
-    await sendVerificationEmail(newUser.email, verificationCode);
+    // Kirim email verifikasi
+    await sendVerificationEmail(newUser.email, verificationToken);
 
+    // Respon sukses
     const newUserWithoutPassword = {
       id: newUser.id,
       username: newUser.username,
@@ -164,14 +173,14 @@ export const registerUser = async (req, res) => {
       newUser: newUserWithoutPassword,
     });
   } catch (error) {
-    // Cek apakah error disebabkan oleh kesalahan pengiriman email
+    // Tangani kesalahan
     if (error.message.includes("Error sending email")) {
       return res.status(500).json({ msg: "Error sending verification email" });
     }
-
     res.status(500).json({ msg: error.message });
   }
 };
+
 
 export const verifyEmail = async (req, res) => {
   try {
@@ -193,7 +202,15 @@ export const verifyEmail = async (req, res) => {
     user.verificationCode = null;
     await user.save();
 
-    res.status(200).json({ msg: "Email verification successful" });
+    // If authentication is successful, generate access and refresh tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    const role = user.role;
+
+    // Save the refresh token in the database
+    user.refreshToken = refreshToken;
+
+    // Mengirimkan respon dengan access token dan role
+    res.status(200).json({ accessToken, role });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Internal Server Error" });
@@ -235,6 +252,7 @@ export const resendVerificationCode = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
 
 export const Me = async (req, res) => {
   try {

@@ -5,11 +5,14 @@ export const verifyUser = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ msg: "Tidak ada token, otentikasi gagal" });
+    return res
+      .status(401)
+      .json({ msg: "Token tidak ditemukan, otentikasi gagal" });
   }
 
   jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
     if (err) {
+      console.error(err);
       return res.status(403).json({ msg: "Token tidak valid" });
     }
 
@@ -23,14 +26,17 @@ export const verifyUser = async (req, res, next) => {
       if (user.role === "admin") {
         req.userId = user.id;
         req.role = user.role;
+        next();
       } else {
         // Jika bukan admin, lakukan verifikasi email
         if (!user.isVerified) {
-          return res.status(403).json({ msg: "Email not verified" });
+          return res.status(403).json({ msg: "Email belum diverifikasi" });
         }
-      }
 
-      next();
+        req.userId = user.id;
+        req.role = user.role;
+        next();
+      }
     } catch (error) {
       console.error(error);
       res.status(500).json({ msg: "Terjadi kesalahan server" });
