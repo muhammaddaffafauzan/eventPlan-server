@@ -3,6 +3,7 @@ import {
   getAllEventsForAdmin,
   getAllEventsForNonAdmin,
   getEventForUser,
+  getEventByUuidForUser,
   getEventByIdForNonAdmin,
   getEventByIdForAdmin,
   createEvent,
@@ -22,6 +23,7 @@ const router = express.Router();
 router.get("/event/admin", verifyUser, adminOnly, getAllEventsForAdmin);
 router.get("/events", getAllEventsForNonAdmin);
 router.get("/event/user", verifyUser, getEventForUser);
+router.get("/event/user/:uuid", verifyUser, getEventByUuidForUser);
 router.get("/event/:uuid", getEventByIdForNonAdmin);
 router.get("/event/admin/:uuid", verifyUser, adminOnly, getEventByIdForAdmin);
 router.post("/event/create", verifyUser, createEvent);

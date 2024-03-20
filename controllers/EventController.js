@@ -359,39 +359,31 @@ export const getEventForUser = async (req, res) => {
     },
   });
   try {
-    let event;
-    if (req.role === "user") {
-      event = await Event.findAll({
+      const events = await Event.findAll({
         where: {
           userId: user.id,
         },
         include: [
           {
-            model: Event_check,
+            model: Event_check, // Include Event_check model
+          },
+          {
+            model: Event_loc, // Include Event_loc model
           },
           {
             model: Event_category,
           },
         ],
       });
-      const eventsWithoutProfiles = event.map((event) => {
+      const eventsWithoutProfiles = events.map((event) => {
         const eventJSON = event.toJSON();
-        if (
-          eventJSON.user &&
-          eventJSON.user.Profiles &&
-          eventJSON.user.Profiles.length > 0
-        ) {
-          eventJSON.user.Profiles = eventJSON.user.Profiles[0];
-        } else {
-          eventJSON.user.Profiles = {};
-        }
 
         // Simpan nilai typeId dan categoryId di variabel
         const eventCategory = eventJSON.Event_Category
           ? eventJSON.Event_Category.category
           : null;
 
-        // Buat objek baru dengan posisi typeId dan categoryId di atas
+        // Buat objek baru tanpa properti event_checks dan event_locations
         const modifiedEvent = {
           id: eventJSON.id,
           userId: eventJSON.userId,
@@ -415,20 +407,89 @@ export const getEventForUser = async (req, res) => {
           tags: eventJSON.tags,
           createdAt: eventJSON.createdAt,
           updatedAt: eventJSON.updatedAt,
-          user: eventJSON.user,
-          event_locations: eventJSON.event_locations,
+          event_locations: eventJSON.event_locations, // Include event_locations
+          event_checks: eventJSON.event_checks, // Include event_checks
         };
 
         return modifiedEvent;
       });
 
       res.status(201).json(eventsWithoutProfiles);
-    } else {
-      res.status(403).json({ msg: "Access for users only" });
-    }
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
+  }
+};
+
+export const getEventByUuidForUser = async (req, res) => {
+  const { uuid } = req.params; // Ambil UUID dari parameter permintaan
+
+  try {
+    // Cari acara berdasarkan UUID
+    const event = await Event.findOne({
+      where: {
+        uuid: uuid,
+      },
+      include: [
+        {
+          model: Event_check,
+        },
+        {
+          model: Event_loc,
+        },
+        {
+          model: Event_category,
+        },
+      ],
+    });
+
+    // Jika acara tidak ditemukan
+    if (!event) {
+      return res.status(404).json({ msg: "Event not found" });
+    }
+
+    // Konversi acara menjadi bentuk JSON
+    const eventJSON = event.toJSON();
+
+    // Simpan nilai typeId dan categoryId di variabel
+    const eventCategory = eventJSON.Event_Category
+      ? eventJSON.Event_Category.category
+      : null;
+
+    // Buat objek baru tanpa properti event_locations dan event_checks
+    const modifiedEvent = {
+      id: eventJSON.id,
+      userId: eventJSON.userId,
+      uuid: eventJSON.uuid,
+      title: eventJSON.title,
+      organizer: eventJSON.organizer,
+      category: eventCategory,
+      price: eventJSON.price,
+      start_date: eventJSON.start_date,
+      end_date: eventJSON.end_date,
+      start_time: eventJSON.start_time,
+      end_time: eventJSON.end_time,
+      type_location: eventJSON.type_location,
+      technical: eventJSON.technical,
+      description: eventJSON.description,
+      language: eventJSON.language,
+      views: eventJSON.views,
+      admin_validation: eventJSON.admin_validation,
+      image: eventJSON.image,
+      url: eventJSON.url,
+      tags: eventJSON.tags,
+      createdAt: eventJSON.createdAt,
+      updatedAt: eventJSON.updatedAt,
+      event_locations: eventJSON.event_locations, // Include event_locations
+      event_check: eventJSON.event_check, // Include event_checks
+    };
+
+    // Kirim respons dengan detail acara
+    res.status(200).json(modifiedEvent);
+  } catch (error) {
+    // Tangani kesalahan
+    console.log(error);
+    res.status(500).json({ msg: "Internal server error" });
   }
 };
 
@@ -506,26 +567,18 @@ export const createEvent = async (req, res) => {
         tags: tagsArray,
       });
 
-      // If the user is an admin, add the location for the event
-      if (userRole === "admin") {
-        // Wrap req.body with a variable
-        const locationPayload = {
-          city,
-          state,
-          country,
-          address,
-          lat,
-          long,
-        };
+      // Wrap req.body with a variable
+      const locationPayload = {
+        city,
+        state,
+        country,
+        address,
+        lat,
+        long,
+      };
 
-        // Call the addLocationForEvent function
-        await addLocationForEventInternal(newEvent.uuid, locationPayload);
-      } else {
-        // If the user is not an admin, you can customize the response here
-        return res.status(403).json({
-          msg: "Access forbidden. Only admin can perform this action.",
-        });
-      }
+      // Call the addLocationForEvent function
+      await addLocationForEventInternal(newEvent.uuid, locationPayload);
 
       res
         .status(201)
@@ -536,7 +589,6 @@ export const createEvent = async (req, res) => {
     }
   });
 };
-
 
 const addLocationForEventInternal = async (eventUuid, locationPayload) => {
   try {
