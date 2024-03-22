@@ -359,62 +359,62 @@ export const getEventForUser = async (req, res) => {
     },
   });
   try {
-      const events = await Event.findAll({
-        where: {
-          userId: user.id,
+    const events = await Event.findAll({
+      where: {
+        userId: user.id,
+      },
+      include: [
+        {
+          model: Event_check, // Include Event_check model
         },
-        include: [
-          {
-            model: Event_check, // Include Event_check model
-          },
-          {
-            model: Event_loc, // Include Event_loc model
-          },
-          {
-            model: Event_category,
-          },
-        ],
-      });
-      const eventsWithoutProfiles = events.map((event) => {
-        const eventJSON = event.toJSON();
+        {
+          model: Event_loc, // Include Event_loc model
+        },
+        {
+          model: Event_category,
+        },
+      ],
+    });
+    const eventsWithoutProfiles = events.map((event) => {
+      const eventJSON = event.toJSON();
 
-        // Simpan nilai typeId dan categoryId di variabel
-        const eventCategory = eventJSON.Event_Category
-          ? eventJSON.Event_Category.category
-          : null;
+      // Simpan nilai typeId dan categoryId di variabel
+      const eventCategory = eventJSON.Event_Category
+        ? eventJSON.Event_Category.category
+        : null;
 
-        // Buat objek baru tanpa properti event_checks dan event_locations
-        const modifiedEvent = {
-          id: eventJSON.id,
-          userId: eventJSON.userId,
-          uuid: eventJSON.uuid,
-          title: eventJSON.title,
-          organizer: eventJSON.organizer,
-          category: eventCategory,
-          price: eventJSON.price,
-          start_date: eventJSON.start_date,
-          end_date: eventJSON.end_date,
-          start_time: eventJSON.start_time,
-          end_time: eventJSON.end_time,
-          type_location: eventJSON.type_location,
-          technical: eventJSON.technical,
-          description: eventJSON.description,
-          language: eventJSON.language,
-          views: eventJSON.views,
-          admin_validation: eventJSON.admin_validation,
-          image: eventJSON.image,
-          url: eventJSON.url,
-          tags: eventJSON.tags,
-          createdAt: eventJSON.createdAt,
-          updatedAt: eventJSON.updatedAt,
-          event_locations: eventJSON.event_locations, // Include event_locations
-          event_checks: eventJSON.event_checks, // Include event_checks
-        };
+      // Buat objek baru tanpa properti event_checks dan event_locations
+      const modifiedEvent = {
+        id: eventJSON.id,
+        userId: eventJSON.userId,
+        uuid: eventJSON.uuid,
+        title: eventJSON.title,
+        organizer: eventJSON.organizer,
+        category: eventCategory,
+        price: eventJSON.price,
+        start_date: eventJSON.start_date,
+        end_date: eventJSON.end_date,
+        start_time: eventJSON.start_time,
+        end_time: eventJSON.end_time,
+        type_location: eventJSON.type_location,
+        technical: eventJSON.technical,
+        description: eventJSON.description,
+        language: eventJSON.language,
+        views: eventJSON.views,
+        admin_validation: eventJSON.admin_validation,
+        image: eventJSON.image,
+        url: eventJSON.url,
+        tags: eventJSON.tags,
+        createdAt: eventJSON.createdAt,
+        updatedAt: eventJSON.updatedAt,
+        event_locations: eventJSON.event_locations, // Include event_locations
+        event_checks: eventJSON.event_checks, // Include event_checks
+      };
 
-        return modifiedEvent;
-      });
+      return modifiedEvent;
+    });
 
-      res.status(201).json(eventsWithoutProfiles);
+    res.status(201).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
@@ -480,8 +480,8 @@ export const getEventByUuidForUser = async (req, res) => {
       tags: eventJSON.tags,
       createdAt: eventJSON.createdAt,
       updatedAt: eventJSON.updatedAt,
-      event_locations: eventJSON.event_locations, // Include event_locations
-      event_check: eventJSON.event_check, // Include event_checks
+      event_locations: eventJSON.event_locations,
+      event_checklists: eventJSON.event_checklists, // Pastikan properti ini ada
     };
 
     // Kirim respons dengan detail acara
@@ -545,12 +545,20 @@ export const createEvent = async (req, res) => {
 
     const tagsArray = tags.split(",").map((tag) => tag.trim());
 
+    // get organize
+    const profile = await Profile.findOne({
+      where: {
+        userId: req.userId,
+      },
+    });
+
     try {
       // Create event without including tags initially
       const newEvent = await Event.create({
         userId: req.userId,
         title: title,
-        organizer: userRole === "admin" ? "Official Eventplan" : organizer,
+        organizer:
+          userRole === "admin" ? "Official Eventplan" : profile.organize,
         categoryId: categoryId,
         price: price,
         start_date: start_date,
@@ -837,11 +845,11 @@ export const updateChecklistForEvent = async (req, res) => {
   }
 
   try {
-    const { checklistId, item, status } = req.body;
+    const { item, status } = req.body;
 
     const existingChecklist = await Event_check.findOne({
       where: {
-        id: checklistId,
+        id: req.params.id_check,
         eventId: event.id,
       },
     });
@@ -869,23 +877,12 @@ export const updateChecklistForEvent = async (req, res) => {
 };
 
 export const deleteChecklistForEvent = async (req, res) => {
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-
-  if (!event) {
-    res.status(404).json({ msg: "Event not found" });
-  }
-
   try {
-    const { checklistId } = req.body;
+    const { id_check } = req.params;
 
     const existingChecklist = await Event_check.findOne({
       where: {
-        id: checklistId,
-        eventId: event.id,
+        id: id_check,
       },
     });
 

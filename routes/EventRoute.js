@@ -31,9 +31,9 @@ router.patch("/event/update/:uuid", verifyUser, updateEvent);
 router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
 router.delete("/event/delete/:uuid", verifyUser, deleteEvent);
 router.post("/event/validation/:uuid", verifyUser, adminOnly, updateEventValidation);
-router.post("/event/checklist/:uuid", verifyUser, addChecklistForEvent);
-router.patch("/event/checklist/update/:uuid", verifyUser, updateChecklistForEvent);
-router.patch("/event/checklist/delete/:uuid", verifyUser, deleteChecklistForEvent);
+router.post("/event/checklist/add/:uuid", verifyUser, addChecklistForEvent);
+router.patch("/event/checklist/update/:uuid/:id_check", verifyUser, updateChecklistForEvent);
+router.delete("/event/checklist/delete/:id_check", verifyUser, deleteChecklistForEvent);
 router.patch("/event/favorite", verifyUser, eventFavorite);
 router.patch("/event/favorite/delete", verifyUser, removeEventFromFavorites);
 
