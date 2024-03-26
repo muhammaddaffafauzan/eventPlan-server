@@ -27,7 +27,7 @@ router.get("/event/user/:uuid", verifyUser, getEventByUuidForUser);
 router.get("/event/:uuid", getEventByIdForNonAdmin);
 router.get("/event/admin/:uuid", verifyUser, adminOnly, getEventByIdForAdmin);
 router.post("/event/create", verifyUser, createEvent);
-router.patch("/event/update/:uuid", verifyUser, updateEvent);
+router.put("/event/update/:uuid", verifyUser, updateEvent);
 router.post("/event/location/:uuid", verifyUser, addLocationForEvent);
 router.delete("/event/delete/:uuid", verifyUser, deleteEvent);
 router.post("/event/validation/:uuid", verifyUser, adminOnly, updateEventValidation);

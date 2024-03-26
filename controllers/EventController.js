@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { Op } from "sequelize";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -640,14 +641,12 @@ export const updateEvent = async (req, res) => {
     });
 
     if (!event) {
-      res.status(404).json({ msg: "Event not found" });
+      return res.status(404).json({ msg: "Event not found" });
     }
 
-    let fileName = "";
+    let fileName = event.image;
 
-    if (req.files === null || req.files.inputFile === undefined) {
-      fileName = event.image;
-    } else {
+    if (req.files && req.files.inputFile) {
       const file = req.files.inputFile;
       const fileSize = file.data.length;
       const ext = path.extname(file.name);
@@ -684,21 +683,11 @@ export const updateEvent = async (req, res) => {
       }
 
       // Move the new file
-      file.mv(uploadPath, (err) => {
-        if (err) {
-          console.error(`Error moving file: ${err}`);
-          return res.status(500).json({ msg: "Error moving file" });
-        }
-        console.log(`File ${uploadPath} successfully moved`);
-      });
-
-      console.log("file:", file); // Check if the file is detected
-      console.log("fileName:", fileName); // Check if fileName is correct
+      await file.mv(uploadPath);
     }
 
     const {
       title,
-      organizer,
       categoryId,
       price,
       start_date,
@@ -710,16 +699,30 @@ export const updateEvent = async (req, res) => {
       description,
       language,
       tags,
+      city,
+      state,
+      country,
+      address,
+      lat,
+      long,
     } = req.body;
     const tagsArray = tags.split(",").map((tag) => tag.trim());
 
     const userRole = req.role;
 
+    // Get user profile
+    const profile = await Profile.findOne({
+      where: {
+        userId: req.userId,
+      },
+    });
+
     await Event.update(
       {
         userId: req.userId,
         title: title,
-        organizer: userRole === "admin" ? "Official Eventplan" : organizer,
+        organizer:
+          userRole === "admin" ? "Official Eventplan" : profile.organize,
         categoryId: categoryId,
         price: price,
         start_date: start_date,
@@ -740,6 +743,20 @@ export const updateEvent = async (req, res) => {
         },
       }
     );
+
+    // Wrap req.body with a variable
+    const locationPayload = {
+      city,
+      state,
+      country,
+      address,
+      lat,
+      long,
+    };
+
+    // Call the addLocationForEvent function
+    await addLocationForEventInternal(event.uuid, locationPayload);
+
     res.status(201).json({ msg: `Event has been updated` });
   } catch (error) {
     res.status(501).json({ msg: error.message });
@@ -904,48 +921,60 @@ export const deleteChecklistForEvent = async (req, res) => {
 };
 
 export const deleteEvent = async (req, res) => {
-  const event = await Event.findOne({
-    where: {
-      uuid: req.params.uuid,
-    },
-  });
-
-  if (!event) {
-    return res.status(404).json({ msg: "Event not found" });
-  }
-
-  // Bangun jalur file gambar
-  const imagePath = path.join(__dirname, `../public/images/${event.image}`);
-
   try {
-    // Hapus file gambar dari direktori jika ada
-    if (fs.existsSync(imagePath) || !event.image) {
-      fs.unlinkSync(imagePath); // Hapus file gambar
+    const event = await Event.findOne({
+      where: {
+        uuid: req.params.uuid,
+      },
+    });
 
-      // Hapus event dari database
-      await Event.destroy({
-        where: {
-          id: event.id,
-        },
-      });
-
-      return res
-        .status(201)
-        .json({ msg: `Event ${event.title} successfully deleted` });
-    } else {
-      // File tidak ditemukan, tetapi lanjutkan penghapusan event dari database
-      await Event.destroy({
-        where: {
-          id: event.id,
-        },
-      });
-
-      return res
-        .status(201)
-        .json({ msg: `Event ${event.title} successfully deleted` });
+    if (!event) {
+      return res.status(404).json({ msg: "Event not found" });
     }
+
+    // Cek apakah file gambar dimiliki oleh rekaman data event lain
+    const otherEvents = await Event.findAll({
+      where: {
+        image: event.image,
+        id: {
+          [Op.ne]: event.id,
+        },
+      },
+    });
+
+    if (otherEvents.length > 0) {
+      // File gambar digunakan oleh rekaman data lain, jadi hanya hapus event dari database
+      await Event.destroy({
+        where: {
+          id: event.id,
+        },
+      });
+
+      return res.status(200).json({
+        msg: `Event ${event.title} deleted from database, but image is still in use by other events`,
+      });
+    }
+
+    // Bangun jalur file gambar
+    const imagePath = path.join(__dirname, `../public/images/${event.image}`);
+
+    // Hapus file gambar dari direktori jika ada
+    if (fs.existsSync(imagePath) && event.image) {
+      fs.unlinkSync(imagePath); // Hapus file gambar
+    }
+
+    // Hapus event dari database
+    await Event.destroy({
+      where: {
+        id: event.id,
+      },
+    });
+
+    return res
+      .status(200)
+      .json({ msg: `Event ${event.title} successfully deleted` });
   } catch (error) {
-    return res.status(501).json({ msg: error.message });
+    return res.status(500).json({ msg: error.message });
   }
 };
 
