@@ -181,7 +181,6 @@ export const registerUser = async (req, res) => {
   }
 };
 
-
 export const verifyEmail = async (req, res) => {
   try {
     const { email, verificationToken } = req.body;
@@ -253,7 +252,6 @@ export const resendVerificationCode = async (req, res) => {
   }
 };
 
-
 export const Me = async (req, res) => {
   try {
     // Get the token from the request headers
@@ -272,7 +270,7 @@ export const Me = async (req, res) => {
       where: {
         id: req.userId,
       },
-      attributes: ["id", "uuid", "username", "email", "role"],
+      attributes: ["id", "uuid", "username", "email", "role", "createdAt"],
     });
 
     if (!user) {
