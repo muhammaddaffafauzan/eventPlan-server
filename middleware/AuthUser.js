@@ -26,6 +26,7 @@ export const verifyUser = async (req, res, next) => {
       if (user.role === "admin") {
         req.userId = user.id;
         req.role = user.role;
+        req.email = user.email;
         next();
       } else {
         // Jika bukan admin, lakukan verifikasi email
@@ -35,6 +36,7 @@ export const verifyUser = async (req, res, next) => {
 
         req.userId = user.id;
         req.role = user.role;
+        req.email = user.email;
         next();
       }
     } catch (error) {

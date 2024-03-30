@@ -310,3 +310,264 @@ export const Me = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
+export const forgotPassword = async (req, res) => {
+  try {
+    // Cek apakah email pengguna ada dalam database dan telah terverifikasi
+    const user = await User.findOne({
+      where: {
+        email: req.body.email,
+        isVerified: true,
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ msg: "User not found or email not verified" });
+    }
+
+    // Generate reset token
+    const resetToken = Math.floor(100000 + Math.random() * 900000); // Generate random 6-digit reset token
+
+    // Simpan reset token dalam database
+    user.verificationToken = resetToken;
+    await user.save();
+
+    // Kirim email reset password
+    await sendVerificationEmail(user.email, resetToken);
+
+    res.json({ msg: "Password reset instructions sent to your email" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const verificationTokenForResetPassword = async (req, res) => {
+  try {
+    const { verificationToken, newPassword, confPassword, email } = req.body;
+
+    const user = await User.findOne({
+      where: {
+        email: email,
+        verificationToken: verificationToken,
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ msg: "Invalid reset token" });
+    }
+
+    // Validasi password baru dan konfirmasi password
+    if (newPassword !== confPassword) {
+      return res
+        .status(400)
+        .json({ msg: "New password and confirmation password do not match" });
+    }
+
+    // Reset verification token in database
+    user.verificationToken = null;
+    await user.save();
+
+    // Hash password baru
+    const salt = await bcryptjs.genSalt();
+    const hashedPassword = await bcryptjs.hash(newPassword, salt);
+
+    // Simpan password baru ke dalam database
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ msg: "Password reset successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+// Fungsi untuk mengirim ulang kode reset password via email
+export const resendCodeEmailForgotPassword = async (req, res) => {
+  try {
+    // Cari pengguna berdasarkan alamat email
+    const user = await User.findOne({
+      where: {
+        email: req.body.email,
+        isVerified: true,
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ msg: "User not found or email not verified" });
+    }
+
+    // Generate kode reset baru
+    const newResetToken = Math.floor(100000 + Math.random() * 900000);
+
+    // Simpan kode reset baru ke dalam database
+    user.verificationToken = newResetToken;
+    await user.save();
+
+    // Kirim email reset password
+    await sendVerificationEmail(user.email, newResetToken);
+
+    res.json({ msg: "Reset code resent successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  const { oldPassword, newPassword, confPassword } = req.body;
+  const userId = req.userId;
+
+  // Validasi password baru
+  if (newPassword !== confPassword) {
+    return res
+      .status(400)
+      .json({ msg: "Password and confirmation password do not match" });
+  }
+
+  try {
+    // Cari pengguna berdasarkan ID pengguna
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Periksa apakah oldPassword cocok dengan password di database
+    const isMatch = await bcryptjs.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Old password is incorrect" });
+    }
+
+    // Hash password baru
+    const salt = await bcryptjs.genSalt();
+    const hashedPassword = await bcryptjs.hash(newPassword, salt);
+
+    // Simpan password baru
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ msg: "Password reset successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const changeEmail = async (req, res) => {
+  const { password, newEmail } = req.body;
+  const userId = req.userId;
+
+  try {
+    // Cari pengguna berdasarkan ID pengguna
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Verifikasi password
+    if (!password || !user.password) {
+      return res
+        .status(400)
+        .json({ msg: "Invalid password or user password is missing" });
+    }
+    const match = await bcryptjs.compare(password, user.password);
+    if (!match) {
+      return res.status(400).json({ msg: "Password is incorrect" });
+    }
+
+    // Cek apakah email baru sudah digunakan oleh pengguna lain
+    const existingUser = await User.findOne({ where: { email: newEmail } });
+    if (existingUser) {
+      return res.status(400).json({ msg: "Email is already registered" });
+    }
+
+    // Buat token verifikasi untuk email baru
+    const verificationToken = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
+    user.verificationToken = verificationToken;
+    await user.save();
+
+    // Kirim email verifikasi
+    await sendVerificationEmail(newEmail, verificationToken);
+
+    res.status(200).json({
+      msg: "Verification email sent to your new email address. Please check your email inbox.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const verificationTokenForChangeEmail = async (req, res) => {
+  const { verificationToken, newEmail } = req.body;
+  const userId = req.userId;
+
+  try {
+    // Cari pengguna berdasarkan ID pengguna
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Validasi token verifikasi untuk email baru
+    if (user.verificationToken !== verificationToken) {
+      return res
+        .status(400)
+        .json({ msg: "Invalid verification token for email change" });
+    }
+
+    // Validasi format email baru
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ msg: "Invalid email format" });
+    }
+
+    // Simpan email baru ke dalam data pengguna
+    user.email = newEmail; // Menggunakan email baru yang disimpan sebelumnya
+    user.verificationToken = null;
+    await user.save();
+
+    res.status(200).json({ msg: "Email changed successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+export const resendCodeForChangeEmail = async (req, res) => {
+  const { password, newEmail } = req.body;
+  const userId = req.userId;
+
+  try {
+    // Cari pengguna berdasarkan ID pengguna
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Verifikasi password
+    const match = await bcryptjs.compare(password, user.password);
+    if (!match) {
+      return res.status(400).json({ msg: "Password is incorrect" });
+    }
+
+    // Buat token verifikasi baru untuk email baru
+    const verificationToken = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
+    user.verificationToken = verificationToken;
+    await user.save();
+
+    // Kirim ulang email verifikasi
+    await sendVerificationEmail(newEmail, verificationToken);
+
+    res.status(200).json({
+      msg: "New verification email sent to your new email address. Please check your email inbox.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
