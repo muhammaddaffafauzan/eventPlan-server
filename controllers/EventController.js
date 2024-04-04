@@ -298,60 +298,59 @@ export const getEventByIdForNonAdmin = async (req, res) => {
         },
       }
     );
-    const eventsWithoutProfiles = event.map((event) => {
-      const eventJSON = event.toJSON();
-      if (
-        eventJSON.user &&
-        eventJSON.user.Profiles &&
-        eventJSON.user.Profiles.length > 0
-      ) {
-        eventJSON.user.Profiles = eventJSON.user.Profiles[0];
-      } else {
-        eventJSON.user.Profiles = {};
-      }
 
-      // Simpan nilai typeId dan categoryId di variabel
-      const eventCategory = eventJSON.Event_Category
-        ? eventJSON.Event_Category.category
-        : null;
+    // Modifikasi event yang ditemukan
+    const eventJSON = event.toJSON();
+    if (
+      eventJSON.user &&
+      eventJSON.user.Profiles &&
+      eventJSON.user.Profiles.length > 0
+    ) {
+      eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+    } else {
+      eventJSON.user.Profiles = {};
+    }
 
-      // Buat objek baru dengan posisi typeId dan categoryId di atas
-      const modifiedEvent = {
-        id: eventJSON.id,
-        userId: eventJSON.userId,
-        uuid: eventJSON.uuid,
-        title: eventJSON.title,
-        organizer: eventJSON.organizer,
-        category: eventCategory,
-        price: eventJSON.price,
-        start_date: eventJSON.start_date,
-        end_date: eventJSON.end_date,
-        start_time: eventJSON.start_time,
-        end_time: eventJSON.end_time,
-        type_location: eventJSON.type_location,
-        technical: eventJSON.technical,
-        description: eventJSON.description,
-        language: eventJSON.language,
-        views: eventJSON.views,
-        admin_validation: eventJSON.admin_validation,
-        image: eventJSON.image,
-        url: eventJSON.url,
-        tags: eventJSON.tags,
-        createdAt: eventJSON.createdAt,
-        updatedAt: eventJSON.updatedAt,
-        user: eventJSON.user,
-        event_locations: eventJSON.event_locations,
-      };
+    // Dapatkan kategori event dengan benar
+    const eventCategory = eventJSON.Event_Category
+      ? eventJSON.Event_Category.category
+      : null;
 
-      return modifiedEvent;
-    });
+    // Buat objek event yang dimodifikasi
+    const modifiedEvent = {
+      id: eventJSON.id,
+      userId: eventJSON.userId,
+      uuid: eventJSON.uuid,
+      title: eventJSON.title,
+      organizer: eventJSON.organizer,
+      category: eventCategory,
+      price: eventJSON.price,
+      start_date: eventJSON.start_date,
+      end_date: eventJSON.end_date,
+      start_time: eventJSON.start_time,
+      end_time: eventJSON.end_time,
+      type_location: eventJSON.type_location,
+      technical: eventJSON.technical,
+      description: eventJSON.description,
+      language: eventJSON.language,
+      views: eventJSON.views,
+      admin_validation: eventJSON.admin_validation,
+      image: eventJSON.image,
+      url: eventJSON.url,
+      tags: eventJSON.tags,
+      createdAt: eventJSON.createdAt,
+      updatedAt: eventJSON.updatedAt,
+      user: eventJSON.user,
+      event_locations: eventJSON.event_locations,
+    };
 
-    res.status(200).json(eventsWithoutProfiles);
+    res.status(201).json(modifiedEvent);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
 };
+
 
 export const getEventForUser = async (req, res) => {
   const user = await User.findOne({
