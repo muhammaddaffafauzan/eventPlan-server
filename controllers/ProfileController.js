@@ -1,10 +1,12 @@
 import Profile from "../models/ProfileModel.js";
 import User from "../models/UsersModel.js";
+import Followers from "../models/FollowersModel.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { Op } from "sequelize";
+import Event from "../models/EventModel.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -38,16 +40,36 @@ async function saveImage(file) {
 
 export const getAllProfileUsers = async (req, res) => {
   try {
-    const response = await Profile.findAll({
-      include: [
-        {
-          model: User,
-          attributes: ["id", "uuid", "username", "email"],
-        },
-      ],
-    });
-    res.status(201).json(response);
+    // Ambil semua data profil
+    const profiles = await Profile.findAll();
+
+    // Siapkan array untuk menyimpan hasil dengan jumlah pengikut dan jumlah event
+    const profilesWithCounts = [];
+
+    // Iterasi setiap profil
+    for (const profile of profiles) {
+      // Hitung jumlah pengikut
+      const followersCount = await Followers.count({
+        where: { followingId: profile.userId },
+      });
+
+      // Hitung jumlah event yang dibuat oleh profil
+      const eventCount = await Event.count({
+        where: { userId: profile.userId },
+      });
+
+      // Tambahkan data profil beserta jumlah pengikut dan jumlah event ke array
+      profilesWithCounts.push({
+        profile,
+        followersCount,
+        eventCount,
+      });
+    }
+
+    // Kirim response
+    res.status(200).json(profilesWithCounts);
   } catch (error) {
+    // Tangani error
     res.status(500).json({ msg: error.message });
     console.log(error);
   }
@@ -55,23 +77,41 @@ export const getAllProfileUsers = async (req, res) => {
 
 export const getProfileUsersByUuid = async (req, res) => {
   try {
-    const response = await Profile.findOne({
+    // Temukan profil berdasarkan uuid
+    const profile = await Profile.findOne({
       where: {
         uuid: req.params.uuid,
       },
-      include: [
-        {
-          model: User,
-          attributes: ["id", "uuid", "username", "email"],
-        },
-      ],
     });
-    res.status(201).json(response);
+
+    // Jika profil tidak ditemukan, kirim respons dengan pesan kesalahan
+    if (!profile) {
+      return res.status(404).json({ msg: "Profile not found" });
+    }
+
+    // Hitung jumlah pengikut
+    const followersCount = await Followers.count({
+      where: { followingId: profile.userId },
+    });
+
+    // Hitung jumlah event yang dibuat oleh profil
+    const eventCount = await Event.count({
+      where: { userId: profile.userId },
+    });
+
+    // Kirim respons dengan profil beserta jumlah pengikut dan jumlah event
+    res.status(200).json({
+      profile,
+      followersCount,
+      eventCount,
+    });
   } catch (error) {
+    // Tangani error
     res.status(500).json({ msg: error.message });
-    console.log(error);
+    console.error(error.message);
   }
 };
+
 
 export const createOrUpdateProfile = async (req, res) => {
   try {

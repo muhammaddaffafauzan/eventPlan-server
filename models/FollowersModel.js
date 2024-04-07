@@ -41,10 +41,10 @@ const Followers = db.define(
   }
 );
 
-User.hasMany(Followers, { foreignKey: "userId", as: "followers" });
+User.hasMany(Followers, { foreignKey: "userId", as: "userFollowers" });
 Followers.belongsTo(User, { foreignKey: "userId" });
 
-User.hasMany(Followers, { foreignKey: "followerId", as: "following" });
+User.hasMany(Followers, { foreignKey: "followerId", as: "userFollowing" });
 Followers.belongsTo(User, { foreignKey: "followerId" });
 
 export default Followers;
