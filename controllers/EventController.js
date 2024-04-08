@@ -2,6 +2,7 @@ import Event from "../models/EventModel.js";
 import Event_loc from "../models/EventLocationModel.js";
 import Event_check from "../models/EventChecklistModel.js";
 import Event_category from "../models/EventCategoryModel.js";
+import Event_fav from "../models/EventFavoriteModel.js";
 import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
 import fs from "fs";
@@ -350,7 +351,6 @@ export const getEventByIdForNonAdmin = async (req, res) => {
     console.log(error);
   }
 };
-
 
 export const getEventForUser = async (req, res) => {
   const user = await User.findOne({
@@ -1010,6 +1010,36 @@ export const updateEventValidation = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: error.message });
+  }
+};
+
+export const getFavoriteEvents = async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    // Cari semua event yang disukai oleh pengguna
+    const favoriteEvents = await Event_fav.findAll({
+      where: {
+        userId,
+      },
+      include: [
+        {
+          model: Event,
+          include: [Event_loc], // Menyertakan tabel Event_loc
+        },
+      ],
+    });
+
+    if (!favoriteEvents || favoriteEvents.length === 0) {
+      return res.status(404).json({
+        msg: "No favorite events found for the user",
+      });
+    }
+
+    res.status(200).json(favoriteEvents);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: error.msg });
   }
 };
 
