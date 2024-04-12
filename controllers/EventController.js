@@ -1096,11 +1096,11 @@ export const removeEventFromFavorites = async (req, res) => {
     // Hapus event dari favorit
     await favoriteToDelete.destroy();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Event removed from favorites",
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: error.message });
+    return res.status(500).json({ msg: error.message });
   }
 };

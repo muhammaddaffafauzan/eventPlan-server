@@ -37,6 +37,6 @@ router.patch("/event/checklist/update/:uuid/:id_check", verifyUser, updateCheckl
 router.delete("/event/checklist/delete/:id_check", verifyUser, deleteChecklistForEvent);
 router.get("/event/favorite/all", verifyUser, getFavoriteEvents);
 router.post("/event/favorite/add", verifyUser, eventFavorite);
-router.patch("/event/favorite/delete", verifyUser, removeEventFromFavorites);
+router.delete("/event/favorite/delete", verifyUser, removeEventFromFavorites);
 
 export default router;
