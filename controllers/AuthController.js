@@ -1,6 +1,7 @@
 import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
 import Followers from "../models/FollowersModel.js";
+import Event from "../models/EventModel.js";
 import jwt from "jsonwebtoken";
 import bcryptjs from "bcryptjs";
 import { Op } from "sequelize";
@@ -119,7 +120,7 @@ const sendVerificationEmail = async (email, verificationCode) => {
 };
 
 export const registerUser = async (req, res) => {
-  const { username, email, password, confPassword } = req.body;
+  const { username, email, firstName, lastName, password, confPassword } = req.body;
 
   // Validasi password
   if (password !== confPassword) {
@@ -152,6 +153,12 @@ export const registerUser = async (req, res) => {
       role: "user",
     });
 
+    const newProfile = await Profile.create({
+      userId: newUser.id,
+      firstName,
+      lastName
+    });
+
     // Buat token verifikasi
     const verificationToken = Math.floor(100000 + Math.random() * 900000); // Kode enam digit
     newUser.verificationToken = verificationToken;
@@ -166,6 +173,7 @@ export const registerUser = async (req, res) => {
       username: newUser.username,
       email: newUser.email,
       role: newUser.role,
+      newProfile,
     };
 
     res.status(201).json({
@@ -207,7 +215,7 @@ export const verifyEmail = async (req, res) => {
 
     // Save the refresh token in the database
     user.refreshToken = refreshToken;
-
+    await user.save();
     // Mengirimkan respon dengan access token dan role
     res.status(200).json({ accessToken, role });
   } catch (error) {
@@ -297,11 +305,19 @@ export const Me = async (req, res) => {
       },
     });
 
+    // Hitung jumlah event yang dimiliki oleh user
+    const eventCount = await Event.count({
+      where: {
+        userId: user.id,
+      },
+    });
+
     const responseAll = {
       user,
       profile,
       followersCount,
       followingCount,
+      eventCount, // Menambahkan eventCount ke respons
     };
 
     res.status(200).json(responseAll);

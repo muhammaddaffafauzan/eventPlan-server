@@ -24,43 +24,33 @@ const Profile = db.define(
     },
     firstName: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     lastName: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     organize: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     address: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     city: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     state: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     country: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     image: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
     url: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
   },
   {

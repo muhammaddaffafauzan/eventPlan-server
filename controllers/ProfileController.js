@@ -112,7 +112,6 @@ export const getProfileUsersByUuid = async (req, res) => {
   }
 };
 
-
 export const createOrUpdateProfile = async (req, res) => {
   try {
     const {
@@ -142,9 +141,13 @@ export const createOrUpdateProfile = async (req, res) => {
     });
 
     if (!profile) {
-      // Jika profil belum ada, maka buat profil baru
-      const file = req.files.inputFile;
-      const fileName = await saveImage(file);
+      // If profile does not exist, create a new one
+      let fileName = null; // Initialize fileName to null
+      if (req.files && req.files.inputFile) {
+        // Check if inputFile exists in req.files
+        const file = req.files.inputFile;
+        fileName = await saveImage(file); // Save the image and get the fileName
+      }
 
       profile = await Profile.create({
         userId: req.userId,
@@ -156,8 +159,10 @@ export const createOrUpdateProfile = async (req, res) => {
         city,
         state,
         country,
-        image: fileName,
-        url: `${req.protocol}://${req.get("host")}/images/${fileName}`,
+        image: fileName, // Set the image field to fileName
+        url: fileName
+          ? `${req.protocol}://${req.get("host")}/images/${fileName}`
+          : null, // Set the url field accordingly
       });
 
       res.status(201).json({
@@ -165,11 +170,12 @@ export const createOrUpdateProfile = async (req, res) => {
         profile: profile,
       });
     } else {
-      // Jika profil sudah ada, maka lakukan update
-      let fileName = profile.image;
+      // If profile exists, update it
+      let fileName = profile.image; // Initialize fileName with the existing image
       if (req.files && req.files.inputFile) {
+        // Check if inputFile exists in req.files
         const file = req.files.inputFile;
-        fileName = await saveImage(file);
+        fileName = await saveImage(file); // Save the new image and get the fileName
       }
 
       await User.update(
@@ -193,8 +199,10 @@ export const createOrUpdateProfile = async (req, res) => {
           city,
           state,
           country,
-          image: fileName,
-          url: `${req.protocol}://${req.get("host")}/images/${fileName}`,
+          image: fileName, // Set the image field to fileName
+          url: fileName
+            ? `${req.protocol}://${req.get("host")}/images/${fileName}`
+            : null, // Set the url field accordingly
         },
         {
           where: {
@@ -209,10 +217,11 @@ export const createOrUpdateProfile = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ msg: error.message });
+    res.status(500).json({ msg: "Failed to create or update user profile" }); // Handle the error
     console.error(error.message);
   }
 };
+
 
 export const deleteProfileImage = async (req, res) => {
  try {

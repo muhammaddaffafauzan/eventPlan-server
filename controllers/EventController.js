@@ -5,6 +5,7 @@ import Event_category from "../models/EventCategoryModel.js";
 import Event_fav from "../models/EventFavoriteModel.js";
 import User from "../models/UsersModel.js";
 import Profile from "../models/ProfileModel.js";
+import Followers from "../models/FollowersModel.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -33,86 +34,6 @@ export const getAllEventsForAdmin = async (req, res) => {
           model: Event_category,
         },
       ],
-    });
-
-    const eventsWithoutProfiles = events.map((event) => {
-      const eventJSON = event.toJSON();
-      if (
-        eventJSON.user &&
-        eventJSON.user.Profiles &&
-        eventJSON.user.Profiles.length > 0
-      ) {
-        eventJSON.user.Profiles = eventJSON.user.Profiles[0];
-      } else {
-        eventJSON.user.Profiles = {};
-      }
-
-      // Simpan nilai typeId dan categoryId di variabel
-      const eventCategory = eventJSON.Event_Category
-        ? eventJSON.Event_Category.category
-        : null;
-
-      // Buat objek baru dengan posisi typeId dan categoryId di atas
-      const modifiedEvent = {
-        id: eventJSON.id,
-        userId: eventJSON.userId,
-        uuid: eventJSON.uuid,
-        title: eventJSON.title,
-        organizer: eventJSON.organizer,
-        category: eventCategory,
-        price: eventJSON.price,
-        start_date: eventJSON.start_date,
-        end_date: eventJSON.end_date,
-        start_time: eventJSON.start_time,
-        end_time: eventJSON.end_time,
-        type_location: eventJSON.type_location,
-        technical: eventJSON.technical,
-        description: eventJSON.description,
-        language: eventJSON.language,
-        views: eventJSON.views,
-        admin_validation: eventJSON.admin_validation,
-        image: eventJSON.image,
-        url: eventJSON.url,
-        tags: eventJSON.tags,
-        createdAt: eventJSON.createdAt,
-        updatedAt: eventJSON.updatedAt,
-        user: eventJSON.user,
-        event_locations: eventJSON.event_locations,
-      };
-
-      return modifiedEvent;
-    });
-
-    res.status(201).json(eventsWithoutProfiles);
-  } catch (error) {
-    res.status(500).json({ msg: error.message });
-    console.log(error);
-  }
-};
-
-export const getAllEventsForNonAdmin = async (req, res) => {
-  try {
-    const events = await Event.findAll({
-      include: [
-        {
-          model: User,
-          attributes: ["id", "uuid", "username", "email", "role"],
-          include: [
-            {
-              model: Profile,
-            },
-          ],
-        },
-        {
-          model: Event_loc,
-        },
-        {
-          model: Event_category,
-        },
-      ],
-      where: {
-        admin_validation: "Approved",
-      },
     });
 
     const eventsWithoutProfiles = events.map((event) => {
@@ -260,6 +181,100 @@ export const getEventByIdForAdmin = async (req, res) => {
   }
 };
 
+export const getAllEventsForNonAdmin = async (req, res) => {
+  try {
+    const events = await Event.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ["id", "uuid", "username", "email", "role"],
+          include: [
+            {
+              model: Profile,
+            },
+          ],
+        },
+        {
+          model: Event_loc,
+        },
+        {
+          model: Event_category,
+        },
+      ],
+      where: {
+        admin_validation: "Approved",
+      },
+    });
+
+    const eventsWithoutProfiles = await Promise.all(
+      events.map(async (event) => {
+        const eventJSON = event.toJSON();
+        if (
+          eventJSON.user &&
+          eventJSON.user.Profiles &&
+          eventJSON.user.Profiles.length > 0
+        ) {
+          eventJSON.user.Profiles = eventJSON.user.Profiles[0];
+        } else {
+          eventJSON.user.Profiles = {};
+        }
+
+        // Hitung jumlah pengikut (followers count)
+        const followersCount = await Followers.count({
+          where: { followingId: eventJSON.userId },
+        });
+
+        // Hitung jumlah event yang dibuat oleh pengguna (event count)
+        const eventCount = await Event.count({
+          where: { userId: eventJSON.userId },
+        });
+
+        // Simpan nilai typeId dan categoryId di variabel
+        const eventCategory = eventJSON.Event_Category
+          ? eventJSON.Event_Category.category
+          : null;
+
+        // Buat objek baru dengan posisi typeId dan categoryId di atas
+        const modifiedEvent = {
+          id: eventJSON.id,
+          userId: eventJSON.userId,
+          uuid: eventJSON.uuid,
+          title: eventJSON.title,
+          organizer: eventJSON.organizer,
+          category: eventCategory,
+          price: eventJSON.price,
+          start_date: eventJSON.start_date,
+          end_date: eventJSON.end_date,
+          start_time: eventJSON.start_time,
+          end_time: eventJSON.end_time,
+          type_location: eventJSON.type_location,
+          technical: eventJSON.technical,
+          description: eventJSON.description,
+          language: eventJSON.language,
+          views: eventJSON.views,
+          admin_validation: eventJSON.admin_validation,
+          image: eventJSON.image,
+          url: eventJSON.url,
+          tags: eventJSON.tags,
+          createdAt: eventJSON.createdAt,
+          updatedAt: eventJSON.updatedAt,
+          user: eventJSON.user,
+          event_locations: eventJSON.event_locations,
+          followersCount: followersCount,
+          eventCount: eventCount,
+        };
+
+        return modifiedEvent;
+      })
+    );
+
+    res.status(201).json(eventsWithoutProfiles);
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+    console.log(error);
+  }
+};
+
 export const getEventByIdForNonAdmin = async (req, res) => {
   try {
     const event = await Event.findOne({
@@ -300,7 +315,6 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       }
     );
 
-    // Modifikasi event yang ditemukan
     const eventJSON = event.toJSON();
     if (
       eventJSON.user &&
@@ -312,12 +326,22 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       eventJSON.user.Profiles = {};
     }
 
-    // Dapatkan kategori event dengan benar
+    // Hitung jumlah pengikut (followers count)
+    const followersCount = await Followers.count({
+      where: { followingId: eventJSON.userId },
+    });
+
+    // Hitung jumlah event yang dibuat oleh pengguna (event count)
+    const eventCount = await Event.count({
+      where: { userId: eventJSON.userId },
+    });
+
+    // Simpan nilai typeId dan categoryId di variabel
     const eventCategory = eventJSON.Event_Category
       ? eventJSON.Event_Category.category
       : null;
 
-    // Buat objek event yang dimodifikasi
+    // Buat objek baru dengan posisi typeId dan categoryId di atas
     const modifiedEvent = {
       id: eventJSON.id,
       userId: eventJSON.userId,
@@ -343,6 +367,8 @@ export const getEventByIdForNonAdmin = async (req, res) => {
       updatedAt: eventJSON.updatedAt,
       user: eventJSON.user,
       event_locations: eventJSON.event_locations,
+      followersCount: followersCount,
+      eventCount: eventCount,
     };
 
     res.status(201).json(modifiedEvent);

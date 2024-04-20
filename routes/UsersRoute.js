@@ -1,9 +1,7 @@
 import express from "express";
 import {
   getUsers,
-  getAdmin,
   getUsersById,
-  getAdminById,
   createAdminUsers,
   createUsers,
   updateUsersById,
@@ -14,10 +12,8 @@ import {
 import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
 
 const router = express.Router();
-router.get("/users", verifyUser, getUsers);
-router.get("/admin", verifyUser, adminOnly, getAdmin);
+router.get("/users", verifyUser, adminOnly, getUsers);
 router.get("/users/:uuid",  verifyUser, getUsersById);
-router.get("/admin/:uuid", verifyUser, adminOnly, getAdminById);
 router.post("/addAdmin", verifyUser, adminOnly, createAdminUsers);
 router.post("/create/user", createUsers);
 router.patch("/users/update/:uuid",  verifyUser, updateUsersById);

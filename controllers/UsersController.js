@@ -2,62 +2,70 @@ import Profile from "../models/ProfileModel.js";
 import User from "../models/UsersModel.js";
 import Event from "../models/EventModel.js";
 import bcryptjs from "bcryptjs";
+import { Op } from "sequelize";
+import Event_loc from "../models/EventLocationModel.js";
 
 export const getUsers = async (req, res) => {
   try {
+    // Dapatkan ID pengguna yang sedang masuk dari req.userId
+    const currentUserId = req.userId;
+
+    // Jika tidak ada pengguna yang sedang masuk, kembalikan pesan kesalahan
+    if (!currentUserId) {
+      return res.status(401).json({ msg: "User not authenticated" });
+    }
+
+    // Lakukan pencarian pengguna kecuali pengguna yang sedang masuk
     const response = await User.findAll({
-      attributes: ["id", "uuid", "username", "email", "role"],
-      where:{
-        role: "user"
-      }
+      attributes: ["id", "uuid", "username", "email", "role", "isVerified", "createdAt"],
+      include: [
+        {
+          model: Profile,
+        },
+      ],
+      where: {
+        id: { [Op.ne]: currentUserId }, // Mencari pengguna dengan ID tidak sama dengan currentUserId
+      },
     });
+
     res.status(200).json(response);
   } catch (error) {
     res.status(500).json({ msg: error.message });
   }
 };
 
-export const getAdmin = async (req, res) => {
-  try {
-    const response = await User.findAll({
-      attributes: ["id", "uuid", "username", "email", "role"],
-      where:{
-        role: "admin"
-      }
-    });
-    res.status(200).json(response);
-  } catch (error) {
-    res.status(500).json({ msg: error.message });
-  }
-};
 export const getUsersById = async (req, res) => {
   try {
-    const response = await User.findOne({
-      attributes: ["uuid", "username", "email", "role"],
+    const user = await User.findOne({
+      attributes: ["uuid", "username", "email", "role", "isVerified", "createdAt"],
       where: {
         uuid: req.params.uuid,
-        role: "user"
       },
+      include: [
+        {
+          model: Profile,
+        },
+        {
+          model: Event,
+          include: [
+            {
+              model: Event_loc, // Menambahkan model Event_loc ke dalam relasi Event
+            },
+          ],
+        },
+      ],
     });
-    res.status(200).json(response);
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ msg: error.message });
   }
 };
-export const getAdminById = async (req, res) => {
-  try {
-    const response = await User.findOne({
-      attributes: ["uuid", "username", "email", "role"],
-      where: {
-        uuid: req.params.uuid,
-        role: "admin"
-      },
-    });
-    res.status(200).json(response);
-  } catch (error) {
-    res.status(500).json({ msg: error.message });
-  }
-};
+
 export const createAdminUsers = async (req, res) => {
   const { username, email, password, confPassword } = req.body;
   const salt = await bcryptjs.genSalt();
