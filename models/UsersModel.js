@@ -17,10 +17,6 @@ const User = db.define(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        notEmpty: true,
-        len: [3, 100],
-      },
     },
     email: {
       type: DataTypes.STRING,
@@ -33,16 +29,10 @@ const User = db.define(
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        notEmpty: true,
-      },
     },
     role: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        notEmpty: true,
-      },
     },
     refreshToken: {
       type: DataTypes.STRING,

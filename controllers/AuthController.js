@@ -206,7 +206,7 @@ export const verifyEmail = async (req, res) => {
 
     // Setel status verifikasi dan hapus kode verifikasi
     user.isVerified = true;
-    user.verificationCode = null;
+    user.verificationToken = null;
     await user.save();
 
     // If authentication is successful, generate access and refresh tokens
@@ -230,6 +230,7 @@ export const resendVerificationCode = async (req, res) => {
     const user = await User.findOne({
       where: {
         email: req.body.email,
+        role: "user", // Pastikan hanya pengguna dengan peran 'user' yang dapat meminta ulang kode verifikasi
       },
     });
 
@@ -251,9 +252,11 @@ export const resendVerificationCode = async (req, res) => {
     await user.save();
 
     // Kirim email verifikasi baru
-    await sendVerificationEmail(user.email, newVerificationCode, req);
+    await sendVerificationEmail(user.email, newVerificationCode);
 
-    res.json({ msg: "Verification code resent successfully" });
+    res.json({
+      msg: `Verification code resent successfully, check email ${user.email}`,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Internal Server Error" });

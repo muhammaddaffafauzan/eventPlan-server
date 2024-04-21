@@ -7,31 +7,31 @@ export const verifyUser = async (req, res, next) => {
   if (!token) {
     return res
       .status(401)
-      .json({ msg: "Token tidak ditemukan, otentikasi gagal" });
+      .json({ msg: "Token not found, authentication failed" });
   }
 
   jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
     if (err) {
       console.error(err);
-      return res.status(403).json({ msg: "Token tidak valid" });
+      return res.status(403).json({ msg: "Token invalid" });
     }
 
     try {
       const user = await User.findOne({ where: { id: decodedToken.userId } });
       if (!user) {
-        return res.status(404).json({ msg: "User tidak ditemukan" });
+        return res.status(404).json({ msg: "User not found" });
       }
 
-      // Tambahkan pengecekan jika peran pengguna adalah admin
-      if (user.role === "admin") {
+      // Check if user role is admin
+      if (user.role === "admin" || user.role === "super admin") {
         req.userId = user.id;
         req.role = user.role;
         req.email = user.email;
         next();
       } else {
-        // Jika bukan admin, lakukan verifikasi email
+        // If not admin or super admin, perform email verification
         if (!user.isVerified) {
-          return res.status(403).json({ msg: "Email belum diverifikasi" });
+          return res.status(403).json({ msg: "Email not verified" });
         }
 
         req.userId = user.id;
@@ -41,7 +41,7 @@ export const verifyUser = async (req, res, next) => {
       }
     } catch (error) {
       console.error(error);
-      res.status(500).json({ msg: "Terjadi kesalahan server" });
+      res.status(500).json({ msg: "Server error" });
     }
   });
 };
@@ -49,16 +49,36 @@ export const verifyUser = async (req, res, next) => {
 export const adminOnly = async (req, res, next) => {
   try {
     if (!req.userId || !req.role) {
-      return res.status(401).json({ msg: "Token tidak valid" });
+      return res.status(401).json({ msg: "Token invalid" });
     }
 
-    if (req.role !== "admin") {
-      return res.status(403).json({ msg: "Akses terlarang" });
+    if (req.role !== "admin" && req.role !== "super admin") {
+      return res.status(403).json({ msg: "Forbidden access" });
     }
 
     next();
   } catch (error) {
     console.error(error);
-    res.status(401).json({ msg: "Token tidak valid" });
+    res.status(401).json({ msg: "Token invalid" });
+  }
+};
+
+export const superAdminOnly = async (req, res, next) => {
+  try {
+    // Check if userId and role exist in the req object
+    if (!req.userId || !req.role) {
+      return res.status(401).json({ msg: "Token invalid" });
+    }
+
+    // Check if user role is "super admin"
+    if (req.role !== "super admin") {
+      return res.status(403).json({ msg: "Forbidden access" });
+    }
+
+    // If role is "super admin", proceed to the next middleware
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ msg: "Token invalid" });
   }
 };

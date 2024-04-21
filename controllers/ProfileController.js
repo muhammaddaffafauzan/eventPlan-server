@@ -1,12 +1,12 @@
 import Profile from "../models/ProfileModel.js";
 import User from "../models/UsersModel.js";
 import Followers from "../models/FollowersModel.js";
+import { Op } from "sequelize";
+import Event from "../models/EventModel.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { Op } from "sequelize";
-import Event from "../models/EventModel.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
