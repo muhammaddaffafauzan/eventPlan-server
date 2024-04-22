@@ -22,22 +22,30 @@ export const verifyUser = async (req, res, next) => {
         return res.status(404).json({ msg: "User not found" });
       }
 
-      // Check if user role is admin
-      if (user.role === "admin" || user.role === "super admin") {
+      // Check if user role is super admin
+      if (user.role === "super admin") {
         req.userId = user.id;
         req.role = user.role;
         req.email = user.email;
         next();
       } else {
-        // If not admin or super admin, perform email verification
-        if (!user.isVerified) {
-          return res.status(403).json({ msg: "Email not verified" });
-        }
+        // Check if user role is admin
+        if (user.role === "admin") {
+          req.userId = user.id;
+          req.role = user.role;
+          req.email = user.email;
+          next();
+        } else {
+          // If not admin or super admin, perform email verification
+          if (!user.isVerified) {
+            return res.status(403).json({ msg: "Email not verified" });
+          }
 
-        req.userId = user.id;
-        req.role = user.role;
-        req.email = user.email;
-        next();
+          req.userId = user.id;
+          req.role = user.role;
+          req.email = user.email;
+          next();
+        }
       }
     } catch (error) {
       console.error(error);
@@ -45,6 +53,7 @@ export const verifyUser = async (req, res, next) => {
     }
   });
 };
+
 
 export const adminOnly = async (req, res, next) => {
   try {

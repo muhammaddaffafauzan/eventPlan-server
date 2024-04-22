@@ -119,15 +119,51 @@ const sendVerificationEmail = async (email, verificationCode) => {
   }
 };
 
-export const registerUser = async (req, res) => {
-  const { username, email, firstName, lastName, password, confPassword } = req.body;
+const sendForgotPasswordEmail = async (email, verificationCode) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+      },
+    });
 
-  // Validasi password
-  if (password !== confPassword) {
-    return res
-      .status(400)
-      .json({ msg: "Password and confirmation password do not match" });
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: "Reset Your Password - EventPlan",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
+            <img src='https://i.postimg.cc/zVskvwHM/eventplan-logo.png' alt='EventPlan Logo' style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;">
+          <h2 style="color: #333; text-align: center;">Reset Your Password</h2>
+          <p style="color: #555; font-size: 16px;">You are receiving this email because a request was made to reset the password for your EventPlan account.</p>
+          <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 15px;">
+            <h3 style="color: #333; text-align: center; font-size: 24px;">Verification Code: ${verificationCode}</h3>
+          </div>
+          <p style="color: #555; font-size: 16px; text-align: center; margin-top: 15px;">This verification code will expire in a limited time.</p>
+          <p style="color: #555; font-size: 16px; text-align: center;">If you did not request a password reset, please ignore this email or contact support.</p>
+          <p style="color: #555; font-size: 16px; text-align: center;">Thank you for choosing EventPlan!</p>
+        </div>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+  } catch (error) {
+    console.error(error);
   }
+};
+
+
+export const registerUser = async (req, res) => {
+  const { email } = req.body;
+
   // Validasi email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
@@ -141,22 +177,10 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ msg: "Email is already registered" });
     }
 
-    // Hash password
-    const salt = await bcryptjs.genSalt();
-    const hashPassword = await bcryptjs.hash(password, salt);
-
     // Buat pengguna baru
     const newUser = await User.create({
-      username: username,
       email: email,
-      password: hashPassword,
       role: "user",
-    });
-
-    const newProfile = await Profile.create({
-      userId: newUser.id,
-      firstName,
-      lastName
     });
 
     // Buat token verifikasi
@@ -170,10 +194,8 @@ export const registerUser = async (req, res) => {
     // Respon sukses
     const newUserWithoutPassword = {
       id: newUser.id,
-      username: newUser.username,
       email: newUser.email,
       role: newUser.role,
-      newProfile,
     };
 
     res.status(201).json({
@@ -186,6 +208,55 @@ export const registerUser = async (req, res) => {
       return res.status(500).json({ msg: "Error sending verification email" });
     }
     res.status(500).json({ msg: error.message });
+  }
+};
+
+export const completeProfile = async (req, res) => {
+  const { username, firstName, lastName, password, confPassword } = req.body;
+  const userId = req.userId; // Anda perlu memastikan bahwa userId ini adalah userId pengguna yang sedang masuk
+
+  try {
+    // Cek apakah pengguna yang sedang masuk sudah terverifikasi
+    const user = await User.findByPk(userId);
+    if (!user || !user.isVerified) {
+      return res.status(401).json({ msg: "User is not verified" });
+    }
+
+    // Validasi password
+    if (password !== confPassword) {
+      return res
+        .status(400)
+        .json({ msg: "Password and confirmation password do not match" });
+    }
+
+    // Validasi apakah pengguna sudah memiliki profil
+    const existingProfile = await Profile.findOne({
+      where: { userId: userId },
+    });
+    if (existingProfile) {
+      return res.status(400).json({ msg: "Profile already exists" });
+    }
+
+    // Hash password
+    const salt = await bcryptjs.genSalt();
+    const hashedPassword = await bcryptjs.hash(password, salt);
+
+    // Buat penggunaan profil baru
+    const newProfile = await Profile.create({
+      userId: userId,
+      firstName: firstName,
+      lastName: lastName,
+    });
+
+    // Update informasi pengguna (username dan password)
+    user.username = username;
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ msg: "Profile completed successfully", newProfile });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal Server Error" });
   }
 };
 
@@ -294,21 +365,21 @@ export const Me = async (req, res) => {
       },
     });
 
-    // Hitung jumlah pengikut user
+    // Count the number of followers of the user
     const followersCount = await Followers.count({
       where: {
         followingId: user.id,
       },
     });
 
-    // Hitung jumlah yang diikuti oleh user
+    // Count the number of users followed by the user
     const followingCount = await Followers.count({
       where: {
         followerId: user.id,
       },
     });
 
-    // Hitung jumlah event yang dimiliki oleh user
+    // Count the number of events owned by the user
     const eventCount = await Event.count({
       where: {
         userId: user.id,
@@ -320,7 +391,7 @@ export const Me = async (req, res) => {
       profile,
       followersCount,
       followingCount,
-      eventCount, // Menambahkan eventCount ke respons
+      eventCount,
     };
 
     res.status(200).json(responseAll);
@@ -329,6 +400,7 @@ export const Me = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
 
 export const forgotPassword = async (req, res) => {
   try {
@@ -354,7 +426,7 @@ export const forgotPassword = async (req, res) => {
     await user.save();
 
     // Kirim email reset password
-    await sendVerificationEmail(user.email, resetToken);
+    await sendForgotPasswordEmail(user.email, resetToken);
 
     res.json({ msg: "Password reset instructions sent to your email" });
   } catch (error) {

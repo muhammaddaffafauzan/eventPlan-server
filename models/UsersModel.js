@@ -15,8 +15,7 @@ const User = db.define(
       },
     },
     username: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.STRING
     },
     email: {
       type: DataTypes.STRING,
@@ -27,22 +26,20 @@ const User = db.define(
       },
     },
     password: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.STRING
     },
     role: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.STRING
     },
     refreshToken: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING
     },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
     verificationToken: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING
     },
   },
   {

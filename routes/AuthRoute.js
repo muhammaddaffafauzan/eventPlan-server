@@ -12,6 +12,7 @@ import {
   changeEmail,
   verificationTokenForChangeEmail,
   resendCodeForChangeEmail,
+  completeProfile
 } from "../controllers/AuthController.js";
 import { verifyUser } from "../middleware/AuthUser.js";
 
@@ -20,6 +21,7 @@ const router = express.Router();
 router.get("/auth/me", verifyUser, Me);
 router.post("/auth/login", Login);
 router.post("/auth/register", registerUser);
+router.post("/auth/complete-profile", verifyUser, completeProfile);
 router.post("/auth/verify-email", verifyEmail);
 router.post("/auth/resend-verification", resendVerificationCode);
 router.post("/auth/forgot-password", forgotPassword);

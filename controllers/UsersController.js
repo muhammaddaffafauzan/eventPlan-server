@@ -13,47 +13,56 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
 
-const sendMail = async (mailOptions) => {
+const sendVerificationEmail = async (email, verificationCode) => {
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: " + info.response);
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: "Welcome to EventPlan! Verify Your Email",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
+            <img src='https://i.postimg.cc/zVskvwHM/eventplan-logo.png' alt='EventPlan Logo' style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;">
+          <h2 style="color: #333; text-align: center;">Welcome to EventPlan</h2>
+          <p style="color: #555; font-size: 16px;">Thank you for choosing EventPlan! To get started, please verify your email address:</p>
+          <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 15px;">
+            <h3 style="color: #333; text-align: center; font-size: 24px;">${verificationCode}</h3>
+          </div>
+          <p style="color: #555; font-size: 16px; text-align: center; margin-top: 15px;">This code will expire in a limited time.</p>
+          <p style="color: #555; font-size: 16px; text-align: center;">Thank you for choosing EventPlan!</p>
+        </div>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
   } catch (error) {
-    console.error("Error sending email:", error);
-    throw new Error("Failed to send email");
+    console.error(error);
   }
 };
 
-const sendVerificationEmail = async (email, verificationCode) => {
-  const mailOptions = {
-    from: process.env.EMAIL,
-    to: email,
-    subject: "Welcome to EventPlan! Verify Your Email",
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
-        <img src='https://i.postimg.cc/zVskvwHM/eventplan-logo.png' alt='EventPlan Logo' style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;">
-        <h2 style="color: #333; text-align: center;">Welcome to EventPlan</h2>
-        <p style="color: #555; font-size: 16px;">Thank you for choosing EventPlan! To get started, please verify your email address:</p>
-        <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 15px;">
-          <h3 style="color: #333; text-align: center; font-size: 24px;">${verificationCode}</h3>
-        </div>
-        <p style="color: #555; font-size: 16px; text-align: center; margin-top: 15px;">This code will expire in a limited time.</p>
-        <p style="color: #555; font-size: 16px; text-align: center;">Thank you for choosing EventPlan!</p>
-      </div>
-    `,
-  };
-
-  await sendMail(mailOptions);
-};
-
 const sendTemporaryPasswordEmail = async (email, tempPassword) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+    },
+  });
+
   const mailOptions = {
     from: process.env.EMAIL,
     to: email,
@@ -73,7 +82,13 @@ const sendTemporaryPasswordEmail = async (email, tempPassword) => {
     `,
   };
 
-  await sendMail(mailOptions);
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error("Error sending email:", error);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
 };
 
 export const getUsers = async (req, res) => {
@@ -163,8 +178,9 @@ export const createUsers = async (req, res) => {
     isVerified,
   } = req.body;
 
-  if (!username) {
-    return res.status(400).json({ msg: "Username is required" });
+  // Pastikan email tidak kosong
+  if (!email) {
+    return res.status(400).json({ msg: "Email is required" });
   }
 
   try {
@@ -178,37 +194,29 @@ export const createUsers = async (req, res) => {
       return res.status(400).json({ msg: "Email is already registered" });
     }
 
-    const existingUsername = await User.findOne({
-      where: { username: username },
-    });
-    if (existingUsername) {
-      return res.status(400).json({ msg: "Username is already registered" });
-    }
-
-    const salt = await bcryptjs.genSalt();
-    if (!salt) {
-      return res.status(500).json({ msg: "Internal Server Error" });
-    }
-
     let hashPassword;
     if (role === "admin") {
+      // Pastikan password dan konfirmasi password cocok
+      if (!password || password !== confPassword) {
+        return res
+          .status(400)
+          .json({
+            msg: "Password and confirmation password are required and must match",
+          });
+      }
+
+      // Hashing password jika peran adalah 'admin'
+      const salt = await bcryptjs.genSalt();
+      if (!salt) {
+        return res.status(500).json({ msg: "Internal Server Error" });
+      }
       hashPassword = await bcryptjs.hash(password, salt);
-    } else if (role === "user") {
-      const tempPassword = crypto.randomBytes(8).toString("hex");
-      hashPassword = await bcryptjs.hash(tempPassword, salt);
-    } else {
-      return res.status(400).json({ msg: "Invalid role" });
     }
 
     let newUser;
 
     if (role === "admin") {
-      if (password !== confPassword) {
-        return res
-          .status(400)
-          .json({ msg: "Password and confirmation password do not match" });
-      }
-
+      // Buat pengguna baru dengan peran 'admin'
       newUser = await User.create({
         username: username,
         email: email,
@@ -217,16 +225,18 @@ export const createUsers = async (req, res) => {
         isVerified: isVerified,
       });
     } else if (role === "user") {
+      // Buat pengguna baru dengan peran 'user', password tidak diperlukan
       newUser = await User.create({
         username: username,
         email: email,
-        password: hashPassword,
         role: role,
       });
     } else {
+      // Peran selain 'admin' dan 'user' tidak didukung
       return res.status(400).json({ msg: "Invalid role" });
     }
 
+    // Buat profil pengguna
     await Profile.create({
       userId: newUser.id,
       firstName: firstName,
@@ -234,27 +244,31 @@ export const createUsers = async (req, res) => {
     });
 
     if (newUser.role === "user") {
-      const tempPassword = crypto.randomBytes(8).toString("hex");
+      // Jika peran pengguna adalah 'user', kirim email verifikasi
       const newVerificationCode = Math.floor(100000 + Math.random() * 900000);
       await sendVerificationEmail(newUser.email, newVerificationCode);
-      await sendTemporaryPasswordEmail(newUser.email, tempPassword);
+      newUser.verificationToken = newVerificationCode;
+      await newUser.save(); // Simpan perubahan ke database
     }
 
+    // Tanggapan berhasil
     if (newUser.role === "admin") {
       res
         .status(201)
-        .json({ msg: `create ${newUser.username} account successfully` });
+        .json({ msg: `Created ${newUser.username} account successfully` });
     } else {
       res.status(201).json({
-        msg: "Add account successfully. Check email user for verification instructions.",
+        msg: "Added account successfully. Check user email for verification instructions.",
       });
     }
     console.log("Request body:", req.body);
   } catch (error) {
+    // Tanggapan jika terjadi kesalahan
     console.error("Error creating user:", error);
     res.status(400).json({ msg: error.message });
   }
 };
+
 
 export const updateUsersById = async (req, res) => {
   try {
@@ -298,24 +312,38 @@ export const verifyEmailAdmin = async (req, res) => {
   try {
     const { email, verificationToken } = req.body;
 
+    // Cari pengguna berdasarkan email dan token verifikasi
     const user = await User.findOne({
       where: {
         email: email,
         verificationToken: verificationToken,
-        role: "user",
       },
     });
 
+    // Jika pengguna tidak ditemukan, kembalikan respons dengan pesan kesalahan
     if (!user) {
       return res.status(400).json({ msg: "Invalid verification code" });
     }
 
+    // Setel status verifikasi pengguna menjadi true dan hapus token verifikasi
     user.isVerified = true;
     user.verificationToken = null;
+
+    // Buat temporary password
+    const tempPassword = crypto.randomBytes(8).toString("hex");
+    const salt = await bcryptjs.genSalt();
+    const hashPassword = await bcryptjs.hash(tempPassword, salt);
+    user.password = hashPassword;
+
     await user.save();
 
+    // Kirim email temporary password ke pengguna
+    await sendTemporaryPasswordEmail(user.email, tempPassword);
+
+    // Kirim respons yang berhasil jika verifikasi berhasil
     res.status(200).json({ msg: `Account ${user.username} has been verified` });
   } catch (error) {
+    // Tangani kesalahan jika terjadi
     console.error("Error verifying email:", error);
     res.status(500).json({ msg: "Internal Server Error" });
   }
