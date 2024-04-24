@@ -8,11 +8,244 @@ import Profile from "../models/ProfileModel.js";
 import Followers from "../models/FollowersModel.js";
 import fs from "fs";
 import path from "path";
+import nodemailer from "nodemailer";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { Op } from "sequelize";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Fungsi untuk mengirim email notifikasi
+const sendNotificationEmail = async (
+  email,
+  eventName,
+  eventDate,
+  startTime
+) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: `🎉 Reminder: ${eventName} Tomorrow! 📅`, // Subjek yang menarik
+      html: `
+       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
+          <h2 style="color: #333; text-align: center;">Don't Miss Out!</h2>
+          <p style="color: #555; font-size: 16px;">Hi there,</p>
+          <p style="color: #555; font-size: 16px;">We just wanted to remind you about an exciting event happening tomorrow:</p>
+          <div style="background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h3 style="color: #333; font-size: 18px; margin-top: 0;">Event Details:</h3>
+            <p style="color: #555; font-size: 16px;"><strong>Event Name:</strong> ${eventName}</p>
+            <p style="color: #555; font-size: 16px;"><strong>Date:</strong> ${eventDate}</p>
+            <p style="color: #555; font-size: 16px;"><strong>start time:</strong> ${startTime}</p>
+          </div>
+          <p style="color: #555; font-size: 16px;">We hope to see you there!</p>
+          <p style="color: #555; font-size: 16px;">Best regards,<br>Eventplan Team</p>
+        </div>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+      } else {
+        console.log("Email sent:", info.response);
+      }
+    });
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+};
+
+export const sendEventReminders = async (req, res) => {
+  try {
+    // Ambil data user berdasarkan req.userId
+    const user = await User.findOne({
+      where: { id: req.userId, role: "user" },
+    });
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Tanggal hari ini
+    const today = new Date();
+
+    // Tanggal besok
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Tanggal h-1
+    const oneDayBefore = new Date();
+    oneDayBefore.setDate(oneDayBefore.getDate());
+
+    const events = await Event.findAll({
+      where: {
+        start_date: {
+          [Op.between]: [
+            oneDayBefore.toISOString().slice(0, 10),
+            tomorrow.toISOString().slice(0, 10),
+          ],
+        },
+        userId: user.id,
+      },
+    });
+
+const sentEvents = [];
+
+// Loop melalui setiap event
+for (const event of events) {
+  // Periksa apakah event dimulai h-1 sebelum dimulai
+  if (
+    new Date(event.start_date) - today <= 24 * 60 * 60 * 1000 &&
+    (!event.lastReminderSent ||
+      event.lastReminderSent < today.toISOString().slice(0, 10))
+  ) {
+    if (user.email) {
+      const { title, start_date, start_time } = event;
+      await sendNotificationEmail(user.email, title, start_date, start_time);
+
+      // Tambahkan nama event ke array sentEvents
+      sentEvents.push(title);
+
+      // Perbarui properti lastReminderSent di event
+      event.lastReminderSent = today.toISOString().slice(0, 10);
+      await event.save(); // Simpan perubahan di database
+    }
+  }
+}
+
+if (sentEvents.length > 0) {
+  res.status(200).json({
+    msg: "Success sending event reminders",
+    sentEvents,
+  });
+}
+  } catch (error) {
+    console.error("Error sending event reminders:", error);
+    // Tanggapi kesalahan dengan respon status 500
+    res.status(500).json({ msg: "Error sending event reminders" });
+  }
+};
+
+export const sendEventRemindersToNonAdminUsersWithEvents = async (req, res) => {
+  try {
+    // Tanggal hari ini
+    const today = new Date();
+
+    // Tanggal besok
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Tanggal h-1
+    const oneDayBefore = new Date();
+    oneDayBefore.setDate(oneDayBefore.getDate());
+
+    // Ambil semua acara yang akan dimulai h-1 sebelum dimulai
+    const events = await Event.findAll({
+      where: {
+        start_date: {
+          [Op.between]: [
+            oneDayBefore.toISOString().slice(0, 10),
+            tomorrow.toISOString().slice(0, 10),
+          ],
+        },
+      },
+      include: [
+        {
+          model: User,
+          where: {
+            role: {
+              [Op.not]: "admin", // Mengambil semua pengguna kecuali yang memiliki peran admin
+            },
+          },
+          attributes: ["email"], // Hanya butuh alamat email pengguna
+        },
+      ],
+    });
+
+    // Kirim notifikasi kepada pengguna mengenai acara yang akan dimulai
+    for (const event of events) {
+      // Periksa apakah event dimulai h-1 sebelum dimulai
+      if (
+        new Date(event.start_date) - today <= 24 * 60 * 60 * 1000 &&
+        (!event.lastReminderSent ||
+          event.lastReminderSent < today.toISOString().slice(0, 10))
+      ) {
+        const { User: user, title, start_date, start_time } = event;
+        await sendNotificationEmail(user.email, title, start_date, start_time);
+
+        // Perbarui properti lastReminderSent di event
+        event.lastReminderSent = today.toISOString().slice(0, 10);
+        await event.save(); // Simpan perubahan di database
+      }
+    }
+
+    res
+      .status(200)
+      .json({ msg: "Success sending event reminders to non-admin users" });
+  } catch (error) {
+    console.error("Error sending event reminders to non-admin users:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getEventRemindersForUser = async (req, res) => {
+  try {
+    const user = await User.findOne({
+      where: { id: req.userId, role: "user" },
+    });
+
+    // Pastikan role pengguna adalah 'user'
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Ambil nilai hari notifikasi dari req.body, defaultnya adalah 1 (h-1)
+    const daysBeforeEvent = req.body.daysBeforeEvent || 1;
+
+    // Hitung tanggal mulai dan akhir berdasarkan hari notifikasi
+    const currentDate = new Date();
+    const startDate = new Date(currentDate);
+    startDate.setDate(startDate.getDate() - daysBeforeEvent); // Menggunakan pengurangan untuk mendapatkan hari sebelumnya
+    const endDate = new Date(currentDate);
+
+    // Ambil daftar acara yang akan dimulai dalam rentang waktu tersebut
+    const events = await Event.findAll({
+      where: {
+        start_date: {
+          [Op.between]: [
+            startDate.toISOString().slice(0, 10), // Gunakan format YYYY-MM-DD
+            endDate.toISOString().slice(0, 10), // Gunakan format YYYY-MM-DD
+          ],
+        },
+        end_date: {
+          [Op.gte]: currentDate.toISOString().slice(0, 10), // Pastikan tanggal selesai acara lebih besar atau sama dengan tanggal hari ini
+        },
+        userId: user.id, // Ambil acara yang dimiliki oleh pengguna yang sedang login
+      },
+    });
+
+    // Siapkan data notifikasi untuk dikirim kembali ke pengguna
+    const notifications = events.map((event) => {
+      const { id, uuid, title, start_date, end_date, start_time, end_time } =
+        event;
+      return { id, uuid, title, start_date, end_date, start_time, end_time };
+    });
+
+    res.status(200).json(notifications);
+  } catch (error) {
+    console.error("Error getting event reminders:", error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
 
 export const getAllEventsForAdmin = async (req, res) => {
   try {
@@ -268,7 +501,7 @@ export const getAllEventsForNonAdmin = async (req, res) => {
       })
     );
 
-    res.status(201).json(eventsWithoutProfiles);
+    res.status(200).json(eventsWithoutProfiles);
   } catch (error) {
     res.status(500).json({ msg: error.message });
     console.log(error);

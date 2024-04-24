@@ -98,6 +98,10 @@ const Event = db.define(
       allowNull: false,
       defaultValue: [],
     },
+    lastReminderSent: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
   },
   {
     freezeTableName: true,

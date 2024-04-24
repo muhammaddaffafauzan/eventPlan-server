@@ -160,7 +160,6 @@ const sendForgotPasswordEmail = async (email, verificationCode) => {
   }
 };
 
-
 export const registerUser = async (req, res) => {
   const { email } = req.body;
 
@@ -400,7 +399,6 @@ export const Me = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
-
 
 export const forgotPassword = async (req, res) => {
   try {

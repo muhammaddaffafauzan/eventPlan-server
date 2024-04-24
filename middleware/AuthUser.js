@@ -54,7 +54,6 @@ export const verifyUser = async (req, res, next) => {
   });
 };
 
-
 export const adminOnly = async (req, res, next) => {
   try {
     if (!req.userId || !req.role) {

@@ -17,6 +17,9 @@ import {
   getFavoriteEvents,
   eventFavorite,
   removeEventFromFavorites,
+  sendEventReminders,
+  sendEventRemindersToNonAdminUsersWithEvents,
+  getEventRemindersForUser,
 } from "../controllers/EventController.js";
 import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
 
@@ -38,5 +41,8 @@ router.delete("/event/checklist/delete/:id_check", verifyUser, deleteChecklistFo
 router.get("/event/favorite/all", verifyUser, getFavoriteEvents);
 router.post("/event/favorite/add", verifyUser, eventFavorite);
 router.delete("/event/favorite/delete", verifyUser, removeEventFromFavorites);
+router.post("/event/reminders", verifyUser, sendEventReminders);
+router.post("/event/reminders/send", verifyUser, adminOnly, sendEventRemindersToNonAdminUsersWithEvents);
+router.get("/event/reminders/get", verifyUser, getEventRemindersForUser);
 
 export default router;
