@@ -755,7 +755,6 @@ export const getEventByUuidForUser = async (req, res) => {
 export const createEvent = async (req, res) => {
   const {
     title,
-    organizer,
     categoryId,
     price,
     start_date,
@@ -817,7 +816,7 @@ export const createEvent = async (req, res) => {
         userId: req.userId,
         title: title,
         organizer:
-          userRole === "admin" ? "Official Eventplan" : profile.organize,
+          userRole === "super admin" ? "Official Eventplan" : profile.organize,
         categoryId: categoryId,
         price: price,
         start_date: start_date,
@@ -828,7 +827,7 @@ export const createEvent = async (req, res) => {
         technical: technical,
         description: description,
         language: language,
-        admin_validation: userRole === "admin" ? "Approved" : "Reviewed",
+        admin_validation: userRole === "super admin" ? "Approved" : "Reviewed",
         image: fileName,
         url: url,
         tags: tagsArray,
@@ -1236,16 +1235,55 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
-export const updateEventValidation = async (req, res) => {
-  const { admin_validation } = req.body;
+export const sendNotificationEmailForDenied = async (
+  email,
+  eventName,
+  eventDate,
+  startTime,
+  rejectionReason
+) => {
   try {
-    // Pastikan pengguna yang memanggil fungsi memiliki role "admin"
-    if (req.role !== "admin") {
-      return res.status(403).json({
-        msg: "Access forbidden. Only admin can update validation status.",
-      });
-    }
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD, // Ganti dengan kata sandi email Anda
+      },
+    });
 
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: `❌ Action Required: Your Event "${eventName}" Has Been Denied Approval`, // Subjek email yang menarik
+      html: `
+       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f4;">
+          <h2 style="color: #333; text-align: center;">Event Approval Denied</h2>
+          <p style="color: #555; font-size: 16px;">Hi there,</p>
+          <p style="color: #555; font-size: 16px;">We regret to inform you that your event "${eventName}" scheduled for ${eventDate} at ${startTime} has been denied approval by the admin.</p>
+          <p style="color: #555; font-size: 16px;">Reason for denial:</p>
+          <p style="color: #555; font-size: 16px;"><strong>${rejectionReason}</strong></p>
+          <p style="color: #555; font-size: 16px;">Please review the reason provided and make any necessary adjustments to your event. We encourage you to resubmit for approval once the required changes have been made.</p>
+          <p style="color: #555; font-size: 16px;">If you have any questions or need further assistance, feel free to contact us.</p>
+          <p style="color: #555; font-size: 16px;">Best regards,<br>Eventplan Team</p>
+        </div>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+      } else {
+        console.log("Email sent:", info.response);
+      }
+    });
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+};
+
+export const updateEventValidation = async (req, res) => {
+  const { admin_validation, rejectionReason } = req.body; // Include rejectionReason in the request body
+  try {
     // Temukan event berdasarkan uuid
     const event = await Event.findOne({
       where: {
@@ -1261,6 +1299,26 @@ export const updateEventValidation = async (req, res) => {
     await event.update({
       admin_validation: admin_validation,
     });
+
+    const user = await User.findOne({
+      where: {
+        id: event.userId
+      }
+    });
+
+    // Check if admin_validation is 'Denied'
+    if (admin_validation === "Denied") {
+      // Send notification email to the event owner
+      const { title, eventDate, startTime } = event;
+      const eventName = title;
+      await sendNotificationEmailForDenied(
+        user.email,
+        eventName,
+        eventDate,
+        startTime,
+        rejectionReason
+      );
+    }
 
     res.status(200).json({
       message: "Event validation status updated",

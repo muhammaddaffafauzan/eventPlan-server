@@ -21,7 +21,7 @@ import {
   sendEventRemindersToNonAdminUsersWithEvents,
   getEventRemindersForUser,
 } from "../controllers/EventController.js";
-import { adminOnly, verifyUser } from "../middleware/AuthUser.js";
+import { adminOnly, superAdminOnly, verifyUser } from "../middleware/AuthUser.js";
 
 const router = express.Router();
 router.get("/event/admin", verifyUser, adminOnly, getAllEventsForAdmin);
